@@ -1,8 +1,9 @@
-import { NextFunction, Request, Response } from 'express';
-import { AnyZodObject } from 'zod';
+import { NextFunction, Request, Response } from "express";
+import { AnyZodObject, ZodEffects } from "zod";
 
-type Source = 'body' | 'query' | 'params';
-export const validate = (schema: AnyZodObject, source: Source = 'body') =>
+type Source = "body" | "query" | "params";
+export const validate =
+  (schema: AnyZodObject | ZodEffects<AnyZodObject>, source: Source = "body") =>
   (req: Request, _res: Response, next: NextFunction) => {
     const result = schema.safeParse(req[source]);
     if (!result.success) return next(result.error);

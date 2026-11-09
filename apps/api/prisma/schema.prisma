@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// PHASE 1 FOUNDATION: tenancy, identity, RBAC, sessions, audit
+// Later phases add their models in separate migrations.
+// Money columns anywhere in the system: @db.Decimal(14, 2).
+// ============================================================
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  logoUrl   String?
+  address   String?
+  phone     String?
+  email     String?
+  website   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  branches         Branch[]
+  users            User[]
+  roles            Role[]
+  academicSessions AcademicSession[]
+  settings         SchoolSetting[]
+  auditLogs        AuditLog[]
+
+  @@map("schools")
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String
+  code      String
+  address   String?
+  phone     String?
+  isMain    Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  users  User[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+  @@map("branches")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  schoolId     String
+  branchId     String?
+  email        String    @unique
+  fullName     String
+  phone        String?
+  passwordHash String
+  isActive     Boolean   @default(true)
+  mustChangePassword Boolean @default(false)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  userRoles     UserRole[]
+  refreshTokens RefreshToken[]
+  loginHistory  LoginHistory[]
+  auditLogs     AuditLog[]
+
+  @@index([schoolId])
+  @@index([schoolId, isActive])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  schoolId    String
+  name        String
+  slug        String
+  description String?
+  isSystem    Boolean  @default(false) // default roles cannot be deleted
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school          School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([schoolId, slug])
+  @@index([schoolId])
+  @@map("roles")
+}
+
+// Global catalogue: one row per module + action, e.g. ("fees", "approve")
+model Permission {
+  id     String @id @default(cuid())
+  module String
+  action PermissionAction
+
+  rolePermissions RolePermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+enum PermissionAction {
+  VIEW
+  CREATE
+  EDIT
+  DELETE
+  APPROVE
+  EXPORT
+  PRINT
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  userId String
+  roleId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ipAddress String?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  userId    String?
+  email     String
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([email, createdAt])
+  @@map("login_history")
+}
+
+model AcademicSession {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String // e.g. 2026-27
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  isActive  Boolean  @default(false) // exactly one active per school (enforced in service + partial unique index)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+
+  @@unique([schoolId, name])
+  @@index([schoolId, isActive])
+  @@map("academic_sessions")
+}
+
+model SchoolSetting {
+  id       String @id @default(cuid())
+  schoolId String
+  key      String
+  value    String
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, key])
+  @@map("school_settings")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  schoolId   String
+  userId     String?
+  action     String // e.g. PAYMENT_REVERSED
+  entity     String // e.g. fee_payments
+  entityId   String?
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}

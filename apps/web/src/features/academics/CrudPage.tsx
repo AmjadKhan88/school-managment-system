@@ -29,6 +29,7 @@ interface Props<T extends { id: string }> {
   toPayload?: (v: Record<string, string>) => unknown;
   extraActions?: (row: T) => React.ReactNode;
   onChanged?: () => void; // called after a successful save or delete
+  allowDelete?: boolean; // default true; sessions pass false
 }
 
 export function CrudPage<T extends { id: string }>(p: Props<T>) {
@@ -164,7 +165,7 @@ export function CrudPage<T extends { id: string }>(p: Props<T>) {
                         <Pencil size={15} />
                       </button>
                     )}
-                    {can("academics", "DELETE") && (
+                    {p.allowDelete !== false && can("academics", "DELETE") && (
                       <button
                         onClick={() =>
                           window.confirm(

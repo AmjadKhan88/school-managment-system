@@ -46,6 +46,7 @@ export function SessionsPage() {
       subtitle="One session is active for daily operations. Past sessions stay intact."
       endpoint="/academics/sessions"
       noun="Session"
+      allowDelete={false}
       onChanged={refreshProfile}
       columns={[
         {
@@ -183,6 +184,7 @@ export const SubjectsPage = () => (
     subtitle="The subject catalogue. Assign subjects to classes under Class-Subject Mapping."
     endpoint="/academics/subjects"
     noun="Subject"
+    toForm={(r) => ({ name: r.name, code: r.code })}
     columns={[
       { header: "Code", render: (r) => r.code },
       {

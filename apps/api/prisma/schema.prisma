@@ -7,11 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================================
-// PHASE 1 FOUNDATION: tenancy, identity, RBAC, sessions, audit
-// Later phases add their models in separate migrations.
-// Money columns anywhere in the system: @db.Decimal(14, 2).
-// ============================================================
+// ---------------- PHASE 1: identity, RBAC, sessions, audit ----------------
 
 model School {
   id        String   @id @default(cuid())
@@ -57,18 +53,18 @@ model Branch {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  schoolId     String
-  branchId     String?
-  email        String    @unique
-  fullName     String
-  phone        String?
-  passwordHash String
-  isActive     Boolean   @default(true)
-  mustChangePassword Boolean @default(false)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  schoolId           String
+  branchId           String?
+  email              String    @unique
+  fullName           String
+  phone              String?
+  passwordHash       String
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   school        School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
@@ -88,7 +84,7 @@ model Role {
   name        String
   slug        String
   description String?
-  isSystem    Boolean  @default(false) // default roles cannot be deleted
+  isSystem    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -101,9 +97,8 @@ model Role {
   @@map("roles")
 }
 
-// Global catalogue: one row per module + action, e.g. ("fees", "approve")
 model Permission {
-  id     String @id @default(cuid())
+  id     String           @id @default(cuid())
   module String
   action PermissionAction
 
@@ -180,10 +175,10 @@ model LoginHistory {
 model AcademicSession {
   id        String   @id @default(cuid())
   schoolId  String
-  name      String // e.g. 2026-27
+  name      String
   startDate DateTime @db.Date
   endDate   DateTime @db.Date
-  isActive  Boolean  @default(false) // exactly one active per school (enforced in service + partial unique index)
+  isActive  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -207,16 +202,16 @@ model SchoolSetting {
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  schoolId   String
-  userId     String?
-  action     String // e.g. PAYMENT_REVERSED
-  entity     String // e.g. fee_payments
-  entityId   String?
-  oldValues  Json?
-  newValues  Json?
-  ipAddress  String?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  schoolId  String
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -224,4 +219,60 @@ model AuditLog {
   @@index([schoolId, createdAt])
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+// ---------------- PHASE 2A: academic structure ----------------
+
+model Class {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  level     Int      @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sections Section[]
+  subjects ClassSubject[]
+
+  @@map("classes")
+}
+
+model Section {
+  id        String   @id @default(cuid())
+  classId   String
+  name      String
+  capacity  Int      @default(40)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  @@unique([classId, name])
+  @@map("sections")
+}
+
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  classes ClassSubject[]
+
+  @@map("subjects")
+}
+
+model ClassSubject {
+  id        String @id @default(cuid())
+  classId   String
+  subjectId String
+
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@unique([classId, subjectId])
+  @@map("class_subjects")
 }

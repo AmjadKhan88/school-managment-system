@@ -9,7 +9,9 @@ declare global {
       roles: string[];
       permissions: Set<string>; // "module:ACTION"
     }
-    interface Request { user?: AuthUser }
+    interface Request {
+      user?: AuthUser;
+    }
   }
 }
 export {};

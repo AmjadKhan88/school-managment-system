@@ -19,5 +19,5 @@ export const optEmail = z.preprocess(
 export const optDate = z.preprocess(emptyToUndef, z.coerce.date().optional());
 export const optId = z.preprocess(emptyToUndef, z.string().min(1).optional());
 
-export const optEnum = <T extends [string, ...string[]]>(values: T) =>
+export const optEnum = <U extends string>(values: readonly [U, ...U[]]) =>
   z.preprocess(emptyToUndef, z.enum(values).optional());

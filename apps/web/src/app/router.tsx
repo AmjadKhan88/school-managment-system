@@ -53,6 +53,7 @@ export const router = createBrowserRouter([
           { path: "academics/class-subjects", element: <ClassSubjectsPage /> },
           { path: "students/enquiries", element: <EnquiriesPage /> },
           { path: "students/new-admission", element: <AdmissionPage /> },
+          { path: "students/all", element: <StudentsPage /> },
           { path: "students/view/:id", element: <StudentProfilePage /> },
           {
             path: "students/profile",

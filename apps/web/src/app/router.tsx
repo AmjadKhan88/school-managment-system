@@ -16,6 +16,8 @@ import { ProtectedRoute } from "./ProtectedRoute";
 import ClassSubjectsPage from "@/features/academics/ClassSubjectsPage";
 import EnquiriesPage from "@/features/students/EnquiriesPage";
 import AdmissionPage from "@/features/students/AdmissionPage";
+import StudentsPage from "@/features/students/StudentsPage";
+import StudentProfilePage from "@/features/students/StudentProfilePage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -28,6 +30,8 @@ const implemented = new Set([
   "/academics/class-subjects",
   "/students/enquiries",
   "/students/new-admission",
+  "/students/all",
+  "/students/profile",
 ]);
 
 export const router = createBrowserRouter([
@@ -49,6 +53,11 @@ export const router = createBrowserRouter([
           { path: "academics/class-subjects", element: <ClassSubjectsPage /> },
           { path: "students/enquiries", element: <EnquiriesPage /> },
           { path: "students/new-admission", element: <AdmissionPage /> },
+          { path: "students/view/:id", element: <StudentProfilePage /> },
+          {
+            path: "students/profile",
+            element: <Navigate to="/students/all" replace />,
+          },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),
           ).map((i) => ({ path: i.path.slice(1), element: <ModulePage /> })),

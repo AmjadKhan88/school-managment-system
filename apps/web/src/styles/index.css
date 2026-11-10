@@ -24,3 +24,24 @@
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+@media print {
+
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  div[class*="lg:pl-"] {
+    padding-left: 0 !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  .card {
+    box-shadow: none;
+  }
+}

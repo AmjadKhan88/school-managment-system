@@ -94,3 +94,59 @@ export const StatusBadge = ({ status }: { status: EnquiryStatus }) => (
     {STATUS_LABEL[status]}
   </span>
 );
+
+export type StudentStatus = "ACTIVE" | "PASSED_OUT" | "TRANSFERRED" | "LEFT";
+
+export const STUDENT_STATUS_LABEL: Record<StudentStatus, string> = {
+  ACTIVE: "Active",
+  PASSED_OUT: "Passed out",
+  TRANSFERRED: "Transferred",
+  LEFT: "Left",
+};
+const STUDENT_STATUS_STYLE: Record<StudentStatus, string> = {
+  ACTIVE: "bg-emerald-100 text-emerald-700",
+  PASSED_OUT: "bg-sky-100 text-sky-700",
+  TRANSFERRED: "bg-amber-100 text-amber-700",
+  LEFT: "bg-slate-200 text-slate-600",
+};
+
+export const StudentStatusBadge = ({ status }: { status: StudentStatus }) => (
+  <span
+    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STUDENT_STATUS_STYLE[status]}`}
+  >
+    {STUDENT_STATUS_LABEL[status]}
+  </span>
+);
+
+export const Avatar = ({
+  name,
+  size = 36,
+}: {
+  name: string;
+  size?: number;
+}) => (
+  <span
+    className="grid shrink-0 place-items-center rounded-full bg-brand-100 font-bold text-brand-700"
+    style={{ width: size, height: size, fontSize: size * 0.38 }}
+  >
+    {name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase())
+      .join("")}
+  </span>
+);
+
+export function calcAge(dob?: string | null) {
+  if (!dob) return null;
+  const b = new Date(dob);
+  const now = new Date();
+  let age = now.getFullYear() - b.getFullYear();
+  if (
+    now.getMonth() < b.getMonth() ||
+    (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())
+  )
+    age--;
+  return age;
+}

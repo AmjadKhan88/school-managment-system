@@ -66,12 +66,14 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  school        School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
-  branch        Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  userRoles     UserRole[]
-  refreshTokens RefreshToken[]
-  loginHistory  LoginHistory[]
-  auditLogs     AuditLog[]
+  school          School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  branch          Branch?        @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  userRoles       UserRole[]
+  refreshTokens   RefreshToken[]
+  loginHistory    LoginHistory[]
+  auditLogs       AuditLog[]
+  studentProfile  Student?       @relation("StudentLogin")
+  guardianProfile Guardian?      @relation("GuardianLogin")
 
   @@index([schoolId])
   @@index([schoolId, isActive])
@@ -182,7 +184,8 @@ model AcademicSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  school      School       @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  enrollments Enrollment[]
 
   @@unique([schoolId, name])
   @@index([schoolId, isActive])
@@ -234,6 +237,9 @@ model Class {
   sections Section[]
   subjects ClassSubject[]
 
+  enrollments Enrollment[]
+  enquiries   AdmissionEnquiry[]
+
   @@map("classes")
 }
 
@@ -246,7 +252,8 @@ model Section {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  class Class @relation(fields: [classId], references: [id], onDelete: Restrict)
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Restrict)
+  enrollments Enrollment[]
 
   @@unique([classId, name])
   @@map("sections")
@@ -275,4 +282,241 @@ model ClassSubject {
 
   @@unique([classId, subjectId])
   @@map("class_subjects")
+}
+
+// ---------------- PHASE 2B: students, admissions, promotion ----------------
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum StudentStatus {
+  ACTIVE
+  PASSED_OUT
+  TRANSFERRED
+  LEFT
+}
+
+enum EnrollmentStatus {
+  ENROLLED
+  PROMOTED
+  REPEATED
+  GRADUATED
+  TRANSFERRED
+  LEFT
+}
+
+enum PromotionOutcome {
+  PROMOTED
+  REPEATED
+  GRADUATED
+}
+
+enum GuardianRelation {
+  FATHER
+  MOTHER
+  GUARDIAN
+  OTHER
+}
+
+enum DocumentType {
+  BIRTH_CERTIFICATE
+  B_FORM
+  PREVIOUS_RESULT
+  TRANSFER_CERTIFICATE
+  PHOTO
+  OTHER
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  INTERESTED
+  ADMISSION_PENDING
+  ADMITTED
+  REJECTED
+}
+
+// Generates admission numbers safely (ADM-2026-0001), incremented inside a transaction.
+model Counter {
+  key   String @id
+  value Int    @default(0)
+
+  @@map("counters")
+}
+
+model Student {
+  id               String        @id @default(cuid())
+  admissionNo      String        @unique
+  fullName         String
+  fatherName       String
+  motherName       String?
+  dateOfBirth      DateTime      @db.Date
+  gender           Gender
+  bloodGroup       String?
+  nationality      String        @default("Pakistani")
+  religion         String?
+  bFormNo          String?       @unique
+  photoUrl         String?
+  previousSchool   String?
+  admissionDate    DateTime      @db.Date
+  status           StudentStatus @default(ACTIVE)
+  permanentAddress String?
+  currentAddress   String?
+  city             String?
+  postalCode       String?
+  medicalNotes     String?
+  needsTransport   Boolean       @default(false)
+  emergencyName    String?
+  emergencyPhone   String?
+  remarks          String?
+  userId           String?       @unique // student portal login
+  archivedAt       DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user        User?              @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
+  guardians   StudentGuardian[]
+  documents   StudentDocument[]
+  enrollments Enrollment[]
+  promotions  StudentPromotion[]
+  admission   Admission?
+
+  @@index([fullName, dateOfBirth]) // duplicate detection
+  @@index([status])
+  @@map("students")
+}
+
+// A guardian can be linked to several children (siblings share one record).
+model Guardian {
+  id         String   @id @default(cuid())
+  fullName   String
+  phone      String
+  email      String?
+  occupation String?
+  userId     String?  @unique // parent portal login
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User?             @relation("GuardianLogin", fields: [userId], references: [id], onDelete: SetNull)
+  students StudentGuardian[]
+
+  @@index([phone])
+  @@map("guardians")
+}
+
+model StudentGuardian {
+  studentId  String
+  guardianId String
+  relation   GuardianRelation
+  isPrimary  Boolean          @default(false)
+
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Restrict)
+
+  @@id([studentId, guardianId])
+  @@map("student_guardians")
+}
+
+model StudentDocument {
+  id           String       @id @default(cuid())
+  studentId    String
+  type         DocumentType
+  fileName     String
+  filePath     String
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String?
+  createdAt    DateTime     @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@map("student_documents")
+}
+
+// One row per student per session: this is the academic history.
+model Enrollment {
+  id        String           @id @default(cuid())
+  studentId String
+  sessionId String
+  classId   String
+  sectionId String
+  rollNo    Int?
+  status    EnrollmentStatus @default(ENROLLED)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  student Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  session AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  class   Class           @relation(fields: [classId], references: [id], onDelete: Restrict)
+  section Section         @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, sessionId]) // one class per student per session
+  @@unique([sessionId, sectionId, rollNo]) // no duplicate roll numbers in a section
+  @@index([sessionId, classId, sectionId])
+  @@map("enrollments")
+}
+
+model StudentPromotion {
+  id               String           @id @default(cuid())
+  batchId          String // groups one bulk promotion run
+  studentId        String
+  fromEnrollmentId String           @unique
+  toEnrollmentId   String?          @unique // empty when repeated-in-place or graduated
+  outcome          PromotionOutcome
+  remarks          String?
+  promotedById     String?
+  createdAt        DateTime         @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([batchId])
+  @@map("student_promotions")
+}
+
+model AdmissionEnquiry {
+  id                String        @id @default(cuid())
+  enquiryNo         String        @unique
+  studentName       String
+  fatherName        String
+  phone             String
+  email             String?
+  dateOfBirth       DateTime?     @db.Date
+  gender            Gender?
+  interestedClassId String?
+  previousSchool    String?
+  address           String?
+  enquiryDate       DateTime      @db.Date
+  source            String?
+  remarks           String?
+  followUpDate      DateTime?     @db.Date
+  status            EnquiryStatus @default(NEW)
+  admissionId       String?       @unique
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  interestedClass Class?     @relation(fields: [interestedClassId], references: [id], onDelete: SetNull)
+  admission       Admission? @relation(fields: [admissionId], references: [id], onDelete: SetNull)
+
+  @@index([status, followUpDate])
+  @@map("admission_enquiries")
+}
+
+// Records the intake event: who admitted whom, into which session.
+model Admission {
+  id            String   @id @default(cuid())
+  studentId     String   @unique
+  sessionId     String
+  admittedById  String?
+  admissionDate DateTime @db.Date
+  remarks       String?
+  createdAt     DateTime @default(now())
+
+  student Student           @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  enquiry AdmissionEnquiry?
+
+  @@map("admissions")
 }

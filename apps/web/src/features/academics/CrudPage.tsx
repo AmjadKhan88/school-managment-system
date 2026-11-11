@@ -30,11 +30,13 @@ interface Props<T extends { id: string }> {
   extraActions?: (row: T) => React.ReactNode;
   onChanged?: () => void; // called after a successful save or delete
   allowDelete?: boolean; // default true; sessions pass false
+  permission?: string; // permission module checked for buttons; default "academics"
 }
 
 export function CrudPage<T extends { id: string }>(p: Props<T>) {
   const qc = useQueryClient();
   const can = useAuth((s) => s.can);
+  const perm = p.permission ?? "academics";
   const [editing, setEditing] = useState<T | "new" | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
 
@@ -91,7 +93,7 @@ export function CrudPage<T extends { id: string }>(p: Props<T>) {
         title={p.title}
         subtitle={p.subtitle}
         actions={
-          can("academics", "CREATE") && (
+          can(perm, "CREATE") && (
             <button className="btn-primary" onClick={() => open("new")}>
               <Plus size={16} />
               Add {p.noun.toLowerCase()}
@@ -156,7 +158,7 @@ export function CrudPage<T extends { id: string }>(p: Props<T>) {
                 <td className="px-4 py-2 text-right">
                   <div className="inline-flex gap-1">
                     {p.extraActions?.(row)}
-                    {can("academics", "EDIT") && (
+                    {can(perm, "EDIT") && (
                       <button
                         onClick={() => open(row)}
                         className="rounded-md p-2 text-slate-500 hover:bg-slate-100"
@@ -165,7 +167,7 @@ export function CrudPage<T extends { id: string }>(p: Props<T>) {
                         <Pencil size={15} />
                       </button>
                     )}
-                    {p.allowDelete !== false && can("academics", "DELETE") && (
+                    {p.allowDelete !== false && can(perm, "DELETE") && (
                       <button
                         onClick={() =>
                           window.confirm(

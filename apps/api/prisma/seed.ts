@@ -51,6 +51,27 @@ async function main() {
     },
   });
 
+  // 2b. Default fee categories
+  const feeCategories: [string, string, "MONTHLY" | "ONE_TIME" | "YEARLY"][] = [
+    ["Admission Fee", "ADM", "ONE_TIME"],
+    ["Monthly Tuition Fee", "TUI", "MONTHLY"],
+    ["Annual Charges", "ANN", "YEARLY"],
+    ["Examination Fee", "EXM", "YEARLY"],
+    ["Registration Fee", "REG", "ONE_TIME"],
+    ["Computer Fee", "CMP", "MONTHLY"],
+    ["Library Fee", "LIB", "YEARLY"],
+    ["Laboratory Fee", "LAB", "YEARLY"],
+    ["Transport Fee", "TRN", "MONTHLY"],
+    ["Miscellaneous Fee", "MSC", "ONE_TIME"],
+  ];
+  for (const [i, [name, code, frequency]] of feeCategories.entries()) {
+    await prisma.feeCategory.upsert({
+      where: { code },
+      update: {},
+      create: { name, code, frequency, sortOrder: i + 1 },
+    });
+  }
+
   // 3. Default roles + grants
   for (const r of DEFAULT_ROLES) {
     const role = await prisma.role.upsert({

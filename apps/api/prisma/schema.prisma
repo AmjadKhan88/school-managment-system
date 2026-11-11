@@ -184,8 +184,9 @@ model AcademicSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  school      School       @relation(fields: [schoolId], references: [id], onDelete: Restrict)
-  enrollments Enrollment[]
+  school        School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  enrollments   Enrollment[]
+  feeStructures FeeStructure[]
 
   @@unique([schoolId, name])
   @@index([schoolId, isActive])
@@ -237,8 +238,9 @@ model Class {
   sections Section[]
   subjects ClassSubject[]
 
-  enrollments Enrollment[]
-  enquiries   AdmissionEnquiry[]
+  enrollments   Enrollment[]
+  enquiries     AdmissionEnquiry[]
+  feeStructures FeeStructure[]
 
   @@map("classes")
 }
@@ -450,10 +452,11 @@ model Enrollment {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
-  student Student         @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  session AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
-  class   Class           @relation(fields: [classId], references: [id], onDelete: Restrict)
-  section Section         @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  student       Student               @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  session       AcademicSession       @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  class         Class                 @relation(fields: [classId], references: [id], onDelete: Restrict)
+  section       Section               @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  feeAssignment StudentFeeAssignment?
 
   @@unique([studentId, sessionId]) // one class per student per session
   @@unique([sessionId, sectionId, rollNo]) // no duplicate roll numbers in a section
@@ -554,4 +557,99 @@ model StudentTransfer {
   @@index([studentId])
   @@index([sessionId, type])
   @@map("student_transfers")
+}
+
+// ---------------- PHASE 3A: fee categories, structures, assignments ----------------
+
+enum FeeFrequency {
+  MONTHLY
+  ONE_TIME
+  YEARLY
+}
+
+enum FineType {
+  NONE
+  FIXED
+  PER_DAY
+}
+
+model FeeCategory {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  code      String       @unique
+  frequency FeeFrequency
+  sortOrder Int          @default(0)
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  structureItems FeeStructureItem[]
+  overrides      StudentFeeOverride[]
+
+  @@map("fee_categories")
+}
+
+// One price list per class per session.
+model FeeStructure {
+  id         String   @id @default(cuid())
+  sessionId  String
+  classId    String
+  dueDay     Int      @default(10) // day of month fees fall due
+  fineType   FineType @default(NONE)
+  fineAmount Decimal  @default(0) @db.Decimal(14, 2)
+  graceDays  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  session     AcademicSession        @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  class       Class                  @relation(fields: [classId], references: [id], onDelete: Restrict)
+  items       FeeStructureItem[]
+  assignments StudentFeeAssignment[]
+
+  @@unique([sessionId, classId])
+  @@map("fee_structures")
+}
+
+model FeeStructureItem {
+  id          String  @id @default(cuid())
+  structureId String
+  categoryId  String
+  amount      Decimal @db.Decimal(14, 2)
+
+  structure FeeStructure @relation(fields: [structureId], references: [id], onDelete: Cascade)
+  category  FeeCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([structureId, categoryId])
+  @@map("fee_structure_items")
+}
+
+// Links one enrollment (student + session) to a price list.
+model StudentFeeAssignment {
+  id           String   @id @default(cuid())
+  enrollmentId String   @unique
+  structureId  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  enrollment Enrollment           @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  structure  FeeStructure         @relation(fields: [structureId], references: [id], onDelete: Restrict)
+  overrides  StudentFeeOverride[]
+
+  @@index([structureId])
+  @@map("student_fee_assignments")
+}
+
+// Per-student price for one category. Amount 0 waives the fee.
+model StudentFeeOverride {
+  id           String  @id @default(cuid())
+  assignmentId String
+  categoryId   String
+  amount       Decimal @db.Decimal(14, 2)
+  reason       String?
+
+  assignment StudentFeeAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  category   FeeCategory          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@unique([assignmentId, categoryId])
+  @@map("student_fee_overrides")
 }

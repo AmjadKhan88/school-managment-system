@@ -382,6 +382,7 @@ model Student {
   documents   StudentDocument[]
   enrollments Enrollment[]
   promotions  StudentPromotion[]
+  transfers   StudentTransfer[]
   admission   Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -519,4 +520,38 @@ model Admission {
   enquiry AdmissionEnquiry?
 
   @@map("admissions")
+}
+
+// ---------------- PHASE 2C: transfers ----------------
+
+enum TransferType {
+  INTERNAL
+  OUT
+}
+
+// Permanent log: an in-session class/section move keeps its "from" values here.
+model StudentTransfer {
+  id                String       @id @default(cuid())
+  studentId         String
+  enrollmentId      String
+  sessionId         String
+  type              TransferType
+  fromClassId       String
+  fromSectionId     String
+  fromRollNo        Int?
+  toClassId         String?
+  toSectionId       String?
+  toRollNo          Int?
+  transferDate      DateTime     @db.Date
+  reason            String?
+  destinationSchool String?
+  certificateNo     String?      @unique // leaving certificate number (OUT transfers)
+  performedById     String?
+  createdAt         DateTime     @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([studentId])
+  @@index([sessionId, type])
+  @@map("student_transfers")
 }

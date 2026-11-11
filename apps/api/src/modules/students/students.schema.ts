@@ -60,3 +60,12 @@ export const updateStudentSchema = z.object({
 });
 
 export const archiveSchema = z.object({ archived: z.boolean() });
+
+export const passedOutQuerySchema = z.object({
+  q: opt(100),
+  sessionId: optId, // the session they graduated in
+  gender: optEnum(GENDERS),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type PassedOutQuery = z.infer<typeof passedOutQuerySchema>;

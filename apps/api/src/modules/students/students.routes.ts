@@ -12,6 +12,8 @@ import {
   archiveSchema,
   ListQuery,
   listQuerySchema,
+  PassedOutQuery,
+  passedOutQuerySchema,
   updateStudentSchema,
 } from "./students.schema";
 
@@ -107,6 +109,81 @@ studentsRouter.get(
     ]);
 
     ok(res, { items, total, page: qy.page, pageSize: qy.pageSize, sessionId });
+  }),
+);
+
+// ---- Passed-out archive (graduated students). Must stay above /:id ----
+studentsRouter.get(
+  "/passed-out",
+  authorize("students", "VIEW"),
+  validate(passedOutQuerySchema, "query"),
+  h(async (req, res) => {
+    const qy = req.query as unknown as PassedOutQuery;
+    const where: Prisma.StudentWhereInput = {
+      status: "PASSED_OUT",
+      ...(qy.gender && { gender: qy.gender }),
+      ...(qy.sessionId && {
+        enrollments: { some: { sessionId: qy.sessionId, status: "GRADUATED" } },
+      }),
+      ...(qy.q && {
+        OR: [
+          { fullName: { contains: qy.q, mode: "insensitive" } },
+          { fatherName: { contains: qy.q, mode: "insensitive" } },
+          { admissionNo: { contains: qy.q, mode: "insensitive" } },
+        ],
+      }),
+    };
+
+    const [rows, total] = await prisma.$transaction([
+      prisma.student.findMany({
+        where,
+        orderBy: { fullName: "asc" },
+        skip: (qy.page - 1) * qy.pageSize,
+        take: qy.pageSize,
+        select: {
+          id: true,
+          admissionNo: true,
+          fullName: true,
+          fatherName: true,
+          gender: true,
+          admissionDate: true,
+          enrollments: {
+            where: { status: "GRADUATED" },
+            orderBy: { session: { startDate: "desc" } },
+            take: 1,
+            select: {
+              rollNo: true,
+              class: { select: { name: true } },
+              section: { select: { name: true } },
+              session: { select: { name: true } },
+            },
+          },
+          guardians: {
+            orderBy: { isPrimary: "desc" },
+            take: 1,
+            select: { guardian: { select: { fullName: true, phone: true } } },
+          },
+        },
+      }),
+      prisma.student.count({ where }),
+    ]);
+
+    // The date they passed out comes from the promotion record.
+    const promos = await prisma.studentPromotion.findMany({
+      where: { studentId: { in: rows.map((r) => r.id) }, outcome: "GRADUATED" },
+      select: { studentId: true, createdAt: true },
+    });
+    const passedOutAt = new Map(promos.map((p) => [p.studentId, p.createdAt]));
+
+    ok(res, {
+      page: qy.page,
+      pageSize: qy.pageSize,
+      total,
+      items: rows.map((r) => ({
+        ...r,
+        passedOutAt: passedOutAt.get(r.id) ?? null,
+      })),
+    });
   }),
 );
 

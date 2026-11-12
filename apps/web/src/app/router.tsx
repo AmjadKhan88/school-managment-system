@@ -27,6 +27,8 @@ import AssignmentsPage from "@/features/fees/AssignmentsPage";
 import GeneratePage from "@/features/fees/GeneratePage";
 import VouchersPage from "@/features/fees/VouchersPage";
 import DiscountsPage from "@/features/fees/DiscountsPage";
+import CollectionPage from "@/features/fees/CollectionPage";
+import PaymentsPage from "@/features/fees/PaymentsPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -52,6 +54,9 @@ const implemented = new Set([
   "/fees/vouchers",
   "/fees/discounts",
   "/fees/scholarships",
+  "/fees/collection",
+  "/fees/quick-collect",
+  "/fees/payments",
 ]);
 
 export const router = createBrowserRouter([
@@ -96,6 +101,9 @@ export const router = createBrowserRouter([
             path: "fees/scholarships",
             element: <DiscountsPage kind="SCHOLARSHIP" />,
           },
+          { path: "fees/collection", element: <CollectionPage /> },
+          { path: "fees/quick-collect", element: <CollectionPage quick /> },
+          { path: "fees/payments", element: <PaymentsPage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),
           ).map((i) => ({ path: i.path.slice(1), element: <ModulePage /> })),

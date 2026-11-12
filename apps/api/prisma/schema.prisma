@@ -381,15 +381,16 @@ model Student {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  user        User?              @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
-  guardians   StudentGuardian[]
-  documents   StudentDocument[]
-  enrollments Enrollment[]
-  promotions  StudentPromotion[]
-  transfers   StudentTransfer[]
-  feeInvoices FeeInvoice[]
-  feePayments FeePayment[]
-  admission   Admission?
+  user         User?              @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
+  guardians    StudentGuardian[]
+  documents    StudentDocument[]
+  enrollments  Enrollment[]
+  promotions   StudentPromotion[]
+  transfers    StudentTransfer[]
+  feeInvoices  FeeInvoice[]
+  feePayments  FeePayment[]
+  feeReminders FeeReminder[]
+  admission    Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
   @@index([status])
@@ -853,4 +854,22 @@ model PaymentAllocation {
   @@index([paymentId])
   @@index([invoiceId])
   @@map("payment_allocations")
+}
+
+// ---------------- PHASE 3D: reminder log ----------------
+
+// A record that a reminder was sent. Real delivery status arrives with the notifications phase.
+model FeeReminder {
+  id        String   @id @default(cuid())
+  studentId String
+  channel   String   @default("WHATSAPP")
+  phone     String?
+  message   String
+  sentById  String?
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([studentId, createdAt])
+  @@map("fee_reminders")
 }

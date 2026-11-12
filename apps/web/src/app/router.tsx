@@ -31,6 +31,9 @@ import CollectionPage from "@/features/fees/CollectionPage";
 import PaymentsPage from "@/features/fees/PaymentsPage";
 import DefaultersPage from "@/features/fees/DefaultersPage";
 import ClassSummaryPage from "@/features/fees/ClassSummaryPage";
+import AdjustmentsPage from "@/features/fees/AdjustmentsPage";
+import RefundsPage from "@/features/fees/RefundsPage";
+import DayWisePage from "@/features/fees/DayWisePage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -60,6 +63,8 @@ const implemented = new Set([
   "/fees/quick-collect",
   "/fees/payments",
   "/fees/defaulters",
+  "/fees/adjustments",
+  "/fees/refunds",
 ]);
 
 export const router = createBrowserRouter([
@@ -109,6 +114,9 @@ export const router = createBrowserRouter([
           { path: "fees/payments", element: <PaymentsPage /> },
           { path: "fees/defaulters", element: <DefaultersPage /> },
           { path: "reports/class-fee-summary", element: <ClassSummaryPage /> },
+          { path: "fees/adjustments", element: <AdjustmentsPage /> },
+          { path: "fees/refunds", element: <RefundsPage /> },
+          { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),
           ).map((i) => ({ path: i.path.slice(1), element: <ModulePage /> })),

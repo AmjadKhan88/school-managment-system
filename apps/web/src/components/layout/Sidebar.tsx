@@ -68,7 +68,7 @@ export function Sidebar({
         {/* Header with Logo and Collapse Toggle */}
         <div className="flex items-center justify-between px-6 pt-7 pb-5">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 text-white shadow-md shadow-rose-500/20">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-tr bg-brand-600 bg-brand-800 bg-brand-300 text-white shadow-md shadow-rose-500/20">
               {user?.school.logoUrl ? (
                 <img
                   src={user.school.logoUrl}
@@ -91,29 +91,11 @@ export function Sidebar({
 
           <button
             onClick={onClose}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 text-white shadow-md shadow-rose-500/20 transition-transform hover:scale-105 active:scale-95 lg:hidden"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-brand-600 text-white shadow-md shadow-rose-500/20 transition-transform hover:scale-105 active:scale-95 lg:hidden"
             aria-label="Close menu"
           >
             <X size={16} />
           </button>
-        </div>
-
-        {/* User Card */}
-        <div className="mx-5 mb-2 flex items-center gap-3 rounded-2xl bg-slate-50/80 border border-slate-100 p-2.5">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-tr from-pink-500 via-rose-500 to-amber-500 text-xs font-bold text-white shadow-sm">
-            {user?.fullName?.[0]?.toUpperCase() ?? "U"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-slate-800">
-              {user?.fullName}
-            </p>
-            <p className="flex items-center gap-1.5 truncate text-[11px] text-slate-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="capitalize text-brand-600">
-                {user?.roles[0]?.name ?? "User"}
-              </span>
-            </p>
-          </div>
         </div>
 
         {/* Nav Items */}
@@ -127,7 +109,7 @@ export function Sidebar({
                   <button
                     onClick={() => toggle(section.id)}
                     aria-expanded={isOpen}
-                    className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[12px] font-semibold uppercase  text-slate-700 hover:text-slate-900 transition-colors"
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[12px] font-semibold text-ink-950   hover:text-slate-900 transition-colors"
                   >
                     <span>{section.title}</span>
                     <ChevronDown
@@ -176,7 +158,7 @@ export function Sidebar({
                               cn(
                                 base,
                                 isActive
-                                  ? "bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white shadow-lg shadow-rose-500/25 font-semibold"
+                                  ? " bg-brand-600 text-white shadow-lg shadow-rose-500/25 font-semibold"
                                   : "text-slate-700 hover:bg-slate-50 hover:text-slate-900",
                               )
                             }
@@ -193,6 +175,24 @@ export function Sidebar({
             );
           })}
         </nav>
+
+        {/* User Card */}
+        <div className="mx-5 mb-2 flex items-center gap-3 rounded-2xl bg-slate-50/80 border border-slate-100 p-2.5">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-tr bg-brand-600 bg-brand-800 bg-brand-300 text-xs font-bold text-white shadow-sm">
+            {user?.fullName?.[0]?.toUpperCase() ?? "U"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-slate-800">
+              {user?.fullName}
+            </p>
+            <p className="flex items-center gap-1.5 truncate text-[11px] text-slate-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="capitalize text-brand-600">
+                {user?.roles[0]?.name ?? "User"}
+              </span>
+            </p>
+          </div>
+        </div>
       </aside>
     </>
   );

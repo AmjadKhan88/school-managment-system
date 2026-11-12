@@ -213,6 +213,17 @@ export async function reversePayment(
     if (p.status === "REVERSED")
       throw ApiError.conflict("This payment is already reversed");
 
+    // Credit that was refunded in cash cannot be refunded again by reversing the whole payment.
+    const allocated = p.allocations.reduce((s, a) => s.plus(a.amount), ZERO);
+    const refundedCredit = p.totalAmount
+      .minus(allocated)
+      .minus(p.unallocatedAmount);
+    if (refundedCredit.gt(0)) {
+      throw ApiError.conflict(
+        `Rs ${refundedCredit.toFixed(2)} of the advance credit from this payment was already refunded, so it cannot be reversed.`,
+      );
+    }
+
     const invoiceIds = [...new Set(p.allocations.map((a) => a.invoiceId))];
     await lock(tx, "fee_invoices", invoiceIds);
     for (const a of p.allocations) {

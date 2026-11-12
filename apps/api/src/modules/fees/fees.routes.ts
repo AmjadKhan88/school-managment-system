@@ -30,6 +30,8 @@ import { discountsRouter } from "./discounts.routes";
 import { invoicesRouter } from "./invoices.routes";
 import { paymentsRouter } from "./payments.routes";
 import { defaultersRouter } from "./defaulters.routes";
+import { adjustmentsRouter } from "./adjustments.routes";
+import { refundsRouter } from "./refunds.routes";
 
 export const feesRouter = Router();
 const OPTS = { timeout: 30_000, maxWait: 10_000 };
@@ -522,3 +524,5 @@ feesRouter.use("/invoices", invoicesRouter);
 feesRouter.use("/discounts", discountsRouter);
 feesRouter.use("/payments", paymentsRouter);
 feesRouter.use("/defaulters", defaultersRouter);
+feesRouter.use("/adjustments", adjustmentsRouter);
+feesRouter.use("/refunds", refundsRouter);

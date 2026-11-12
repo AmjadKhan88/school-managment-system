@@ -272,3 +272,185 @@ reportsRouter.get(
     );
   }),
 );
+
+// ===================== Day-wise collection =====================
+const daySchema = z.object({
+  date: z.preprocess(emptyToUndef, z.coerce.date().optional()),
+});
+
+type DayLine = {
+  type: "PAYMENT" | "REVERSAL" | "REFUND";
+  ref: string;
+  admissionNo: string;
+  student: string;
+  className: string;
+  methods: string;
+  amount: Prisma.Decimal;
+};
+
+const METHOD_NAME: Record<string, string> = {
+  CASH: "Cash",
+  BANK_TRANSFER: "Bank transfer",
+  JAZZCASH: "JazzCash",
+  EASYPAISA: "EasyPaisa",
+  CHEQUE: "Cheque",
+  OTHER: "Other",
+};
+
+async function dayWise(date: Date) {
+  const studentSelect = {
+    admissionNo: true,
+    fullName: true,
+    enrollments: {
+      orderBy: { session: { startDate: "desc" as const } },
+      take: 1,
+      select: {
+        class: { select: { name: true } },
+        section: { select: { name: true } },
+      },
+    },
+  };
+  const [payments, refunds] = await Promise.all([
+    prisma.feePayment.findMany({
+      where: { paymentDate: date },
+      orderBy: { receiptNo: "asc" },
+      include: { lines: true, student: { select: studentSelect } },
+    }),
+    prisma.feeRefund.findMany({
+      where: { status: "PAID", paidDate: date },
+      orderBy: { refundNo: "asc" },
+      include: { student: { select: studentSelect } },
+    }),
+  ]);
+
+  const lines: DayLine[] = [];
+  const byMethod = new Map<string, Prisma.Decimal>();
+  const byClass = new Map<
+    string,
+    { receipts: number; amount: Prisma.Decimal }
+  >();
+  const addMethod = (m: string, d: Prisma.Decimal) =>
+    byMethod.set(m, (byMethod.get(m) ?? ZERO).plus(d));
+  const addClass = (name: string, d: Prisma.Decimal, receipt: boolean) => {
+    const c = byClass.get(name) ?? { receipts: 0, amount: ZERO };
+    byClass.set(name, {
+      receipts: c.receipts + (receipt ? 1 : 0),
+      amount: c.amount.plus(d),
+    });
+  };
+  const cls = (en?: { class: { name: string } }) =>
+    en?.class.name ?? "No class";
+
+  for (const p of payments) {
+    const className = cls(p.student.enrollments[0]);
+    lines.push({
+      type: p.kind,
+      ref: p.receiptNo,
+      admissionNo: p.student.admissionNo,
+      student: p.student.fullName,
+      className,
+      methods: [...new Set(p.lines.map((l) => METHOD_NAME[l.method]))].join(
+        ", ",
+      ),
+      amount: p.totalAmount,
+    });
+    p.lines.forEach((l) => addMethod(l.method, l.amount));
+    addClass(className, p.totalAmount, p.kind === "PAYMENT");
+  }
+  for (const r of refunds) {
+    const className = cls(r.student.enrollments[0]);
+    lines.push({
+      type: "REFUND",
+      ref: r.refundNo,
+      admissionNo: r.student.admissionNo,
+      student: r.student.fullName,
+      className,
+      methods: METHOD_NAME[r.method],
+      amount: r.amount.neg(),
+    });
+    addMethod(r.method, r.amount.neg());
+    addClass(className, r.amount.neg(), false);
+  }
+
+  const sum = (t: DayLine["type"]) =>
+    lines.filter((l) => l.type === t).reduce((s, l) => s.plus(l.amount), ZERO);
+  const payTotal = sum("PAYMENT");
+  const revTotal = sum("REVERSAL");
+  const refTotal = sum("REFUND");
+
+  return {
+    date: date.toISOString().slice(0, 10),
+    totals: {
+      payments: payTotal.toFixed(2),
+      reversals: revTotal.toFixed(2),
+      refunds: refTotal.toFixed(2),
+      net: payTotal.plus(revTotal).plus(refTotal).toFixed(2),
+    },
+    byMethod: [...byMethod.entries()]
+      .map(([method, a]) => ({
+        method,
+        label: METHOD_NAME[method],
+        amount: a.toFixed(2),
+      }))
+      .sort((a, b) => Number(b.amount) - Number(a.amount)),
+    byClass: [...byClass.entries()]
+      .map(([className, c]) => ({
+        className,
+        receipts: c.receipts,
+        amount: c.amount.toFixed(2),
+      }))
+      .sort((a, b) => Number(b.amount) - Number(a.amount)),
+    lines: lines.map((l) => ({ ...l, amount: l.amount.toFixed(2) })),
+  };
+}
+
+const parseDay = (qy: { date?: Date }) =>
+  qy.date ?? new Date(new Date().toISOString().slice(0, 10));
+
+reportsRouter.get(
+  "/day-wise-collection",
+  authorize("reports", "VIEW"),
+  validate(daySchema, "query"),
+  h(async (req, res) =>
+    ok(res, await dayWise(parseDay(req.query as unknown as { date?: Date }))),
+  ),
+);
+
+reportsRouter.get(
+  "/day-wise-collection/export",
+  authorize("reports", "EXPORT"),
+  validate(daySchema, "query"),
+  h(async (req, res) => {
+    const r = await dayWise(parseDay(req.query as unknown as { date?: Date }));
+    await writeAudit(req, {
+      action: "REPORT_EXPORTED",
+      entity: "day_wise_collection",
+      newValues: { date: r.date, rows: r.lines.length },
+    });
+    await sendXlsx(
+      res,
+      `day-wise-collection-${r.date}`,
+      "Collection",
+      [
+        { header: "Type", key: "type", width: 12 },
+        { header: "Reference", key: "ref", width: 18 },
+        { header: "Admission no", key: "admissionNo", width: 16 },
+        { header: "Student", key: "student", width: 28 },
+        { header: "Class", key: "className", width: 14 },
+        { header: "Method", key: "methods", width: 22 },
+        { header: "Amount", key: "amount", width: 16, money: true },
+      ],
+      r.lines.map((l) => ({
+        ...l,
+        type:
+          l.type === "PAYMENT"
+            ? "Payment"
+            : l.type === "REVERSAL"
+              ? "Reversal"
+              : "Refund",
+        amount: Number(l.amount),
+      })),
+      { student: `Net collection for ${r.date}`, amount: Number(r.totals.net) },
+    );
+  }),
+);

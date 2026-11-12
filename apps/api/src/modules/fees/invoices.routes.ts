@@ -164,6 +164,7 @@ invoicesRouter.get(
       where: { id: req.params.id },
       include: {
         items: { orderBy: { category: { sortOrder: "asc" } } },
+        adjustments: { orderBy: { createdAt: "asc" } },
         student: {
           select: {
             admissionNo: true,

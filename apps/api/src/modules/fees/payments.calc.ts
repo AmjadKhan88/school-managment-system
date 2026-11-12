@@ -39,3 +39,20 @@ export function invoiceStatusFor(
   if (paid.lte(0)) return "OPEN";
   return paid.gte(total) ? "PAID" : "PARTIAL";
 }
+
+/** Takes an amount out of advance-credit balances, oldest first. `shortfall` is what could not be covered. */
+export function takeFromCredit(
+  pool: { id: string; left: Prisma.Decimal }[],
+  amount: Prisma.Decimal,
+) {
+  let remaining = amount;
+  const takes: { id: string; amount: Prisma.Decimal }[] = [];
+  for (const c of pool) {
+    if (remaining.lte(0)) break;
+    if (c.left.lte(0)) continue;
+    const t = Prisma.Decimal.min(c.left, remaining);
+    takes.push({ id: c.id, amount: t });
+    remaining = remaining.minus(t);
+  }
+  return { takes, shortfall: remaining };
+}

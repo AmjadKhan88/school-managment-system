@@ -390,6 +390,7 @@ model Student {
   feeInvoices  FeeInvoice[]
   feePayments  FeePayment[]
   feeReminders FeeReminder[]
+  feeRefunds   FeeRefund[]
   admission    Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -724,6 +725,7 @@ model FeeInvoice {
   section     Section             @relation(fields: [sectionId], references: [id], onDelete: Restrict)
   items       FeeInvoiceItem[]
   allocations PaymentAllocation[]
+  adjustments FeeAdjustment[]
 
   @@index([sessionId, periodKey])
   @@index([studentId])
@@ -872,4 +874,61 @@ model FeeReminder {
 
   @@index([studentId, createdAt])
   @@map("fee_reminders")
+}
+
+// ---------------- PHASE 3E: adjustments and refunds ----------------
+
+enum AdjustmentType {
+  FINE_WAIVER
+  EXTRA_DISCOUNT
+}
+
+enum RefundStatus {
+  PENDING
+  PAID
+  REJECTED
+}
+
+// Each adjustment is a permanent record of a change made to an issued invoice.
+model FeeAdjustment {
+  id          String         @id @default(cuid())
+  invoiceId   String
+  studentId   String
+  type        AdjustmentType
+  amount      Decimal        @db.Decimal(14, 2)
+  reason      String
+  createdById String?
+  createdAt   DateTime       @default(now())
+
+  invoice FeeInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([studentId])
+  @@map("fee_adjustments")
+}
+
+// Refund of advance credit. Money goes out only when an approver marks it PAID.
+model FeeRefund {
+  id              String        @id @default(cuid())
+  refundNo        String        @unique
+  studentId       String
+  amount          Decimal       @db.Decimal(14, 2)
+  method          PaymentMethod
+  reference       String?
+  reason          String
+  status          RefundStatus  @default(PENDING)
+  requestedById   String?
+  decidedById     String?
+  decidedAt       DateTime?
+  rejectionReason String?
+  paidDate        DateTime?     @db.Date
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([studentId])
+  @@index([status])
+  @@index([paidDate])
+  @@map("fee_refunds")
 }

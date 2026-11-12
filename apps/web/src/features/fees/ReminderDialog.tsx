@@ -27,11 +27,17 @@ const monthShort = (k: string) =>
   });
 
 export function buildMessage(template: string, d: Defaulter) {
-  return template
-    .replaceAll("{parent_name}", d.guardianName ?? "Parent / Guardian")
-    .replaceAll("{student_name}", d.fullName)
-    .replaceAll("{amount}", fmtMoney(d.outstanding))
-    .replaceAll("{fee_month}", d.months.map(monthShort).join(", "));
+  const values: Record<string, string> = {
+    parent_name: d.guardianName ?? "Parent / Guardian",
+    student_name: d.fullName,
+    amount: fmtMoney(d.outstanding),
+    fee_month: d.months.map(monthShort).join(", "),
+  };
+  // Replaces every {variable}; an unknown {name} is left exactly as typed.
+  return template.replace(
+    /\{(\w+)\}/g,
+    (whole, key: string) => values[key] ?? whole,
+  );
 }
 
 /** Pakistani numbers: 0300... becomes 92300... for wa.me links. */

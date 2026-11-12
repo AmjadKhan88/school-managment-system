@@ -1,11 +1,20 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Loader2, Search } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Search,
+  FileSpreadsheet,
+} from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { fmtDate, useDebounced } from "@/features/students/shared";
 import { api, apiMessage } from "@/lib/api";
 import { ReceiptDialog } from "./ReceiptDialog";
 import { fmtMoney, METHOD_LABEL, Method } from "./shared";
+import toast from "react-hot-toast";
+import { downloadFile } from "@/lib/download";
+import { useAuth } from "@/store/auth";
 
 interface Row {
   id: string;
@@ -35,6 +44,31 @@ export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
   const dq = useDebounced(q);
+
+  const can = useAuth((s) => s.can);
+  const [exporting, setExporting] = useState(false);
+  const exportFile = async (format: "xlsx" | "csv") => {
+    setExporting(true);
+    try {
+      await downloadFile(
+        "/fees/payments/export",
+        {
+          q: dq || undefined,
+          from: from || undefined,
+          to: to || undefined,
+          method: method || undefined,
+          status: status || undefined,
+          format,
+        },
+        `fee-transactions.${format}`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const reset =
     <T,>(set: (v: T) => void) =>
     (v: T) => {
@@ -65,6 +99,27 @@ export default function PaymentsPage() {
       <PageHeader
         title="Payment History"
         subtitle="Every receipt and reversal. Net collection counts reversals as negative entries on the day they happened."
+        actions={
+          can("fee_collection", "EXPORT") && (
+            <div className="flex gap-2">
+              <button
+                className="btn border border-slate-300"
+                disabled={exporting}
+                onClick={() => exportFile("csv")}
+              >
+                CSV
+              </button>
+              <button
+                className="btn-primary"
+                disabled={exporting}
+                onClick={() => exportFile("xlsx")}
+              >
+                <FileSpreadsheet size={16} />
+                Export Excel
+              </button>
+            </div>
+          )
+        }
       />
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

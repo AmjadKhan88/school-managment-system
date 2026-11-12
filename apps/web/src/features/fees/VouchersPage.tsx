@@ -94,6 +94,12 @@ interface Detail {
     amount: string;
     discount: string;
   }[];
+  adjustments: {
+    id: string;
+    type: "FINE_WAIVER" | "EXTRA_DISCOUNT";
+    amount: string;
+    reason: string;
+  }[];
   student: {
     admissionNo: string;
     fullName: string;
@@ -545,6 +551,20 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
                   ))}
                 </tbody>
               </table>
+
+              {d.adjustments.length > 0 && (
+                <ul className="mt-3 space-y-1 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">
+                  {d.adjustments.map((a) => (
+                    <li key={a.id}>
+                      {a.type === "FINE_WAIVER"
+                        ? "Fine waived"
+                        : "Extra discount"}{" "}
+                      {fmtMoney(a.amount)}: {a.reason}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               <dl className="mt-3 space-y-1 border-t border-line pt-3 text-sm">
                 {(
                   [

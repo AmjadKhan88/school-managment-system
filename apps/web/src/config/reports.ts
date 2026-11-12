@@ -70,7 +70,7 @@ export const REPORT_CARDS: ReportCard[] = [
     icon: CalendarDays,
     tile: "bg-rose-100 text-rose-600",
     highlight: true,
-    action: { kind: "soon" },
+    action: { kind: "page", to: "/reports/day-wise-collection" },
   },
   {
     slug: "fee-defaulters",
@@ -155,7 +155,15 @@ export const QUICK_EXPORTS: QuickExport[] = [
       file: "fees-collected.xlsx",
     },
   },
-  { label: "Day-wise Collection", action: { kind: "soon" } },
+  {
+    label: "Day-wise Collection",
+    action: {
+      kind: "download",
+      url: "/reports/day-wise-collection/export",
+      params: () => ({ date: today() }),
+      file: "day-wise-collection.xlsx",
+    },
+  },
   {
     label: "Fee Defaulters",
     action: {

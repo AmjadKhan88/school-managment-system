@@ -142,9 +142,25 @@ export async function createAdmission(input: AdmissionInput, userId: string) {
       });
     }
 
-    await tx.enrollment.create({
-      data: { studentId: created.id, sessionId, classId, sectionId, rollNo },
+    const enrollment = await tx.enrollment.create({
+      data: {
+        studentId: created.id,
+        sessionId,
+        classId,
+        sectionId,
+        rollNo,
+      },
     });
+
+    // Link the new student to the class fee structure, if one has been set up for this session.
+    const feeStructure = await tx.feeStructure.findUnique({
+      where: { sessionId_classId: { sessionId, classId } },
+      select: { id: true },
+    });
+    if (feeStructure)
+      await tx.studentFeeAssignment.create({
+        data: { enrollmentId: enrollment.id, structureId: feeStructure.id },
+      });
 
     const admission = await tx.admission.create({
       data: {

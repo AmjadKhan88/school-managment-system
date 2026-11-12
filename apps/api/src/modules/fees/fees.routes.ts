@@ -26,6 +26,8 @@ import {
   structureSchema,
   StructureInput,
 } from "./fees.schema";
+import { discountsRouter } from "./discounts.routes";
+import { invoicesRouter } from "./invoices.routes";
 
 export const feesRouter = Router();
 const OPTS = { timeout: 30_000, maxWait: 10_000 };
@@ -514,3 +516,5 @@ feesRouter.post(
     ok(res, { assigned: result.count }, 201);
   }),
 );
+feesRouter.use("/invoices", invoicesRouter);
+feesRouter.use("/discounts", discountsRouter);

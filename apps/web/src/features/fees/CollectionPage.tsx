@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Loader2,
@@ -73,10 +74,11 @@ const newKey = () =>
 export default function CollectionPage({ quick = false }: { quick?: boolean }) {
   const qc = useQueryClient();
   const can = useAuth((s) => s.can);
+  const [urlParams] = useSearchParams();
 
   const [search, setSearch] = useState("");
   const ds = useDebounced(search.trim());
-  const [studentId, setStudentId] = useState("");
+  const [studentId, setStudentId] = useState(urlParams.get("studentId") ?? "");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rows, setRows] = useState<MethodRow[]>([
     { method: "CASH", amount: "", reference: "" },

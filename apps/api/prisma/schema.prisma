@@ -388,6 +388,7 @@ model Student {
   promotions  StudentPromotion[]
   transfers   StudentTransfer[]
   feeInvoices FeeInvoice[]
+  feePayments FeePayment[]
   admission   Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -716,11 +717,12 @@ model FeeInvoice {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  enrollment Enrollment       @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
-  student    Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
-  class      Class            @relation(fields: [classId], references: [id], onDelete: Restrict)
-  section    Section          @relation(fields: [sectionId], references: [id], onDelete: Restrict)
-  items      FeeInvoiceItem[]
+  enrollment  Enrollment          @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  student     Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  class       Class               @relation(fields: [classId], references: [id], onDelete: Restrict)
+  section     Section             @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  items       FeeInvoiceItem[]
+  allocations PaymentAllocation[]
 
   @@index([sessionId, periodKey])
   @@index([studentId])
@@ -769,4 +771,86 @@ model FeeDiscount {
 
   @@index([enrollmentId, status])
   @@map("fee_discounts")
+}
+
+// ---------------- PHASE 3C: payments and receipts ----------------
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  JAZZCASH
+  EASYPAISA
+  CHEQUE
+  OTHER
+}
+
+enum PaymentKind {
+  PAYMENT
+  REVERSAL
+}
+
+enum PaymentStatus {
+  POSTED
+  REVERSED
+}
+
+// Payments are never edited or deleted. A mistake is corrected by a REVERSAL row.
+// Reversal rows carry negative amounts so net collection = sum of all rows.
+model FeePayment {
+  id                String        @id @default(cuid())
+  receiptNo         String        @unique
+  kind              PaymentKind   @default(PAYMENT)
+  status            PaymentStatus @default(POSTED)
+  studentId         String
+  paymentDate       DateTime      @db.Date
+  totalAmount       Decimal       @db.Decimal(14, 2)
+  unallocatedAmount Decimal       @default(0) @db.Decimal(14, 2) // advance credit still available
+  duesBefore        Decimal       @default(0) @db.Decimal(14, 2)
+  duesAfter         Decimal       @default(0) @db.Decimal(14, 2)
+  notes             String?
+  idempotencyKey    String?       @unique
+  receivedById      String?
+  reversesPaymentId String?       @unique // one reversal per payment
+  reversalReason    String?
+  reversedAt        DateTime?
+  reversedById      String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  student     Student             @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  lines       FeePaymentLine[]
+  allocations PaymentAllocation[]
+
+  @@index([studentId])
+  @@index([paymentDate])
+  @@index([status])
+  @@map("fee_payments")
+}
+
+model FeePaymentLine {
+  id        String        @id @default(cuid())
+  paymentId String
+  method    PaymentMethod
+  amount    Decimal       @db.Decimal(14, 2)
+  reference String?
+
+  payment FeePayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@map("fee_payment_lines")
+}
+
+model PaymentAllocation {
+  id        String   @id @default(cuid())
+  paymentId String
+  invoiceId String
+  amount    Decimal  @db.Decimal(14, 2)
+  createdAt DateTime @default(now())
+
+  payment FeePayment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  invoice FeeInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([invoiceId])
+  @@map("payment_allocations")
 }

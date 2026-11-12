@@ -25,6 +25,8 @@ import {
   reversePayment,
   studentDues,
 } from "./payments.service";
+import { sendCsv } from "../../utils/csv";
+import { sendXlsx } from "../../utils/excel";
 
 export const paymentsRouter = Router();
 
@@ -241,6 +243,157 @@ paymentsRouter.get(
         receivedBy: r.receivedById ? (name.get(r.receivedById) ?? null) : null,
       })),
     });
+  }),
+);
+
+// ---- Export every payment and reversal matching the filters (xlsx or csv) ----
+paymentsRouter.get(
+  "/export",
+  authorize("fee_collection", "EXPORT"),
+  validate(paymentListSchema, "query"),
+  h(async (req, res) => {
+    const qy = req.query as unknown as PaymentListQuery;
+    const format = req.query.format === "csv" ? "csv" : "xlsx";
+    const where: Prisma.FeePaymentWhereInput = {
+      ...(qy.studentId && { studentId: qy.studentId }),
+      ...(qy.status && { status: qy.status }),
+      ...(qy.method && { lines: { some: { method: qy.method } } }),
+      ...((qy.from || qy.to) && {
+        paymentDate: {
+          ...(qy.from && { gte: qy.from }),
+          ...(qy.to && { lte: qy.to }),
+        },
+      }),
+      ...(qy.q && {
+        student: {
+          OR: [
+            { fullName: { contains: qy.q, mode: "insensitive" } },
+            { admissionNo: { contains: qy.q, mode: "insensitive" } },
+          ],
+        },
+      }),
+    };
+    const rows = await prisma.feePayment.findMany({
+      where,
+      take: 20000,
+      orderBy: [{ paymentDate: "asc" }, { receiptNo: "asc" }],
+      include: {
+        lines: true,
+        student: {
+          select: {
+            admissionNo: true,
+            fullName: true,
+            enrollments: {
+              orderBy: { session: { startDate: "desc" } },
+              take: 1,
+              select: {
+                class: { select: { name: true } },
+                section: { select: { name: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    const users = await prisma.user.findMany({
+      where: {
+        id: {
+          in: rows.map((r) => r.receivedById).filter((x): x is string => !!x),
+        },
+      },
+      select: { id: true, fullName: true },
+    });
+    const name = new Map(users.map((u) => [u.id, u.fullName]));
+
+    const methods = [
+      "CASH",
+      "BANK_TRANSFER",
+      "JAZZCASH",
+      "EASYPAISA",
+      "CHEQUE",
+      "OTHER",
+    ] as const;
+    const data = rows.map((r) => {
+      const byMethod: Record<string, number> = {};
+      r.lines.forEach((l) => {
+        byMethod[l.method] = (byMethod[l.method] ?? 0) + Number(l.amount);
+      });
+      const en = r.student.enrollments[0];
+      return {
+        receiptNo: r.receiptNo,
+        date: r.paymentDate.toISOString().slice(0, 10),
+        admissionNo: r.student.admissionNo,
+        student: r.student.fullName,
+        className: en ? `${en.class.name} / ${en.section.name}` : "",
+        type: r.kind === "REVERSAL" ? "Reversal" : "Payment",
+        status:
+          r.kind === "REVERSAL"
+            ? "Reversal entry"
+            : r.status === "REVERSED"
+              ? "Reversed"
+              : "Received",
+        references: r.lines
+          .map((l) => l.reference)
+          .filter(Boolean)
+          .join("; "),
+        amount: Number(r.totalAmount),
+        receivedBy: r.receivedById ? (name.get(r.receivedById) ?? "") : "",
+        ...Object.fromEntries(methods.map((m) => [m, byMethod[m] ?? 0])),
+      };
+    });
+
+    await writeAudit(req, {
+      action: "REPORT_EXPORTED",
+      entity: "fee_payments",
+      newValues: { rows: data.length, format },
+    });
+    const file = `fee-transactions-${new Date().toISOString().slice(0, 10)}`;
+    const heads = [
+      "Receipt no",
+      "Date",
+      "Admission no",
+      "Student",
+      "Class",
+      "Type",
+      "Status",
+      "References",
+      "Amount",
+      "Cash",
+      "Bank transfer",
+      "JazzCash",
+      "EasyPaisa",
+      "Cheque",
+      "Other",
+      "Received by",
+    ];
+    const keys = [
+      "receiptNo",
+      "date",
+      "admissionNo",
+      "student",
+      "className",
+      "type",
+      "status",
+      "references",
+      "amount",
+      ...methods,
+      "receivedBy",
+    ];
+
+    if (format === "csv") return sendCsv(res, file, heads, keys, data);
+    await sendXlsx(
+      res,
+      file,
+      "Fee transactions",
+      heads.map((header, i) => ({
+        header,
+        key: keys[i],
+        width: i === 3 ? 28 : 16,
+        money: i >= 8 && i <= 14,
+      })),
+      data,
+      { student: "Net total", amount: data.reduce((s, d) => s + d.amount, 0) },
+    );
   }),
 );
 

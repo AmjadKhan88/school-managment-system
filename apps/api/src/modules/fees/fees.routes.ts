@@ -29,6 +29,7 @@ import {
 import { discountsRouter } from "./discounts.routes";
 import { invoicesRouter } from "./invoices.routes";
 import { paymentsRouter } from "./payments.routes";
+import { defaultersRouter } from "./defaulters.routes";
 
 export const feesRouter = Router();
 const OPTS = { timeout: 30_000, maxWait: 10_000 };
@@ -520,3 +521,4 @@ feesRouter.post(
 feesRouter.use("/invoices", invoicesRouter);
 feesRouter.use("/discounts", discountsRouter);
 feesRouter.use("/payments", paymentsRouter);
+feesRouter.use("/defaulters", defaultersRouter);

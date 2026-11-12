@@ -241,6 +241,7 @@ model Class {
   enrollments   Enrollment[]
   enquiries     AdmissionEnquiry[]
   feeStructures FeeStructure[]
+  feeInvoices   FeeInvoice[]
 
   @@map("classes")
 }
@@ -256,6 +257,7 @@ model Section {
 
   class       Class        @relation(fields: [classId], references: [id], onDelete: Restrict)
   enrollments Enrollment[]
+  feeInvoices FeeInvoice[]
 
   @@unique([classId, name])
   @@map("sections")
@@ -385,6 +387,7 @@ model Student {
   enrollments Enrollment[]
   promotions  StudentPromotion[]
   transfers   StudentTransfer[]
+  feeInvoices FeeInvoice[]
   admission   Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -457,6 +460,8 @@ model Enrollment {
   class         Class                 @relation(fields: [classId], references: [id], onDelete: Restrict)
   section       Section               @relation(fields: [sectionId], references: [id], onDelete: Restrict)
   feeAssignment StudentFeeAssignment?
+  feeInvoices   FeeInvoice[]
+  feeDiscounts  FeeDiscount[]
 
   @@unique([studentId, sessionId]) // one class per student per session
   @@unique([sessionId, sectionId, rollNo]) // no duplicate roll numbers in a section
@@ -585,6 +590,8 @@ model FeeCategory {
 
   structureItems FeeStructureItem[]
   overrides      StudentFeeOverride[]
+  invoiceItems   FeeInvoiceItem[]
+  discounts      FeeDiscount[]
 
   @@map("fee_categories")
 }
@@ -652,4 +659,114 @@ model StudentFeeOverride {
 
   @@unique([assignmentId, categoryId])
   @@map("student_fee_overrides")
+}
+
+// ---------------- PHASE 3B: invoices and discounts ----------------
+
+enum InvoiceStatus {
+  OPEN
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum DiscountKind {
+  DISCOUNT
+  SCHOLARSHIP
+}
+
+enum DiscountMode {
+  PERCENT
+  FIXED
+}
+
+enum DiscountStatus {
+  PENDING
+  APPROVED
+  REVOKED
+}
+
+// Invoices are never deleted. totalAmount = subtotal - discountTotal + fineAmount.
+// paidAmount is changed only by payment allocation (next step), inside the payment transaction.
+model FeeInvoice {
+  id              String        @id @default(cuid())
+  invoiceNo       String        @unique
+  enrollmentId    String
+  studentId       String
+  sessionId       String
+  classId         String // class/section at billing time, kept for reports
+  sectionId       String
+  periodKey       String // "2026-11"
+  periodLock      String?       @unique // enrollmentId:periodKey while active; null once cancelled
+  issueDate       DateTime      @db.Date
+  dueDate         DateTime      @db.Date
+  subtotal        Decimal       @db.Decimal(14, 2)
+  discountTotal   Decimal       @default(0) @db.Decimal(14, 2)
+  fineAmount      Decimal       @default(0) @db.Decimal(14, 2)
+  totalAmount     Decimal       @db.Decimal(14, 2)
+  paidAmount      Decimal       @default(0) @db.Decimal(14, 2)
+  previousBalance Decimal       @default(0) @db.Decimal(14, 2) // informational snapshot, not part of totalAmount
+  fineType        FineType      @default(NONE)
+  fineRate        Decimal       @default(0) @db.Decimal(14, 2)
+  graceDays       Int           @default(0)
+  status          InvoiceStatus @default(OPEN)
+  cancelledAt     DateTime?
+  cancelReason    String?
+  generatedById   String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  enrollment Enrollment       @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  student    Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  class      Class            @relation(fields: [classId], references: [id], onDelete: Restrict)
+  section    Section          @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  items      FeeInvoiceItem[]
+
+  @@index([sessionId, periodKey])
+  @@index([studentId])
+  @@index([status, dueDate])
+  @@map("fee_invoices")
+}
+
+model FeeInvoiceItem {
+  id          String       @id @default(cuid())
+  invoiceId   String
+  categoryId  String
+  description String // category name at billing time
+  frequency   FeeFrequency
+  amount      Decimal      @db.Decimal(14, 2)
+  discount    Decimal      @default(0) @db.Decimal(14, 2)
+
+  invoice  FeeInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  category FeeCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([invoiceId])
+  @@index([categoryId])
+  @@map("fee_invoice_items")
+}
+
+// Discounts and scholarships apply only once APPROVED. Revoking never changes invoices already issued.
+model FeeDiscount {
+  id              String         @id @default(cuid())
+  enrollmentId    String
+  kind            DiscountKind
+  categoryId      String? // null = all monthly fees
+  mode            DiscountMode
+  value           Decimal        @db.Decimal(14, 2)
+  validFromPeriod String?
+  validToPeriod   String?
+  reason          String
+  status          DiscountStatus @default(PENDING)
+  createdById     String?
+  approvedById    String?
+  approvedAt      DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  enrollment Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  category   FeeCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([enrollmentId, status])
+  @@map("fee_discounts")
 }

@@ -44,4 +44,20 @@
   .card {
     box-shadow: none;
   }
+
+  body.print-voucher * {
+    visibility: hidden;
+  }
+  body.print-voucher #voucher,
+  body.print-voucher #voucher * {
+    visibility: visible;
+  }
+  body.print-voucher #voucher {
+    position: fixed;
+    inset: 0;
+    padding: 24px;
+    background: #fff;
+    overflow: visible;
+  }
+        
 }

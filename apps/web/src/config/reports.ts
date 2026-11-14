@@ -52,7 +52,11 @@ export const REPORT_CARDS: ReportCard[] = [
     description: "Income vs expense, monthly comparison with charts",
     icon: TrendingUp,
     tile: "bg-fuchsia-100 text-fuchsia-700",
-    action: { kind: "soon" },
+    action: {
+      kind: "download",
+      url: "/finance/income-vs-expense/export",
+      file: "income-vs-expense.xlsx",
+    },
   },
   {
     slug: "fees-collected",
@@ -127,7 +131,11 @@ export const REPORT_CARDS: ReportCard[] = [
     description: "View monthly school expenditure",
     icon: FileText,
     tile: "bg-orange-100 text-orange-700",
-    action: { kind: "soon" },
+    action: {
+      kind: "download",
+      url: "/finance/expense-summary/export",
+      file: "expense-summary.xlsx",
+    },
   },
 ];
 

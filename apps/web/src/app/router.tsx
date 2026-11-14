@@ -34,6 +34,12 @@ import ClassSummaryPage from "@/features/fees/ClassSummaryPage";
 import AdjustmentsPage from "@/features/fees/AdjustmentsPage";
 import RefundsPage from "@/features/fees/RefundsPage";
 import DayWisePage from "@/features/fees/DayWisePage";
+import ExpenseCategoriesPage from "@/features/finance/ExpenseCategoriesPage";
+import ExpensesPage from "@/features/finance/ExpensesPage";
+import IncomePage from "@/features/finance/IncomePage";
+import CashBookPage from "@/features/finance/CashBookPage";
+import IncomeVsExpensePage from "@/features/finance/IncomeVsExpensePage";
+import ExpenseReportPage from "@/features/finance/ExpenseReportPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -65,6 +71,13 @@ const implemented = new Set([
   "/fees/defaulters",
   "/fees/adjustments",
   "/fees/refunds",
+  "/finance/expenses",
+  "/finance/expense-categories",
+  "/finance/income",
+  "/finance/other-income",
+  "/finance/cash-book",
+  "/finance/bank",
+  "/finance/income-vs-expense",
 ]);
 
 export const router = createBrowserRouter([
@@ -116,6 +129,29 @@ export const router = createBrowserRouter([
           { path: "reports/class-fee-summary", element: <ClassSummaryPage /> },
           { path: "fees/adjustments", element: <AdjustmentsPage /> },
           { path: "fees/refunds", element: <RefundsPage /> },
+          { path: "finance/expenses", element: <ExpensesPage /> },
+          {
+            path: "finance/expense-categories",
+            element: <ExpenseCategoriesPage />,
+          },
+          { path: "finance/income", element: <IncomePage /> },
+          { path: "finance/other-income", element: <IncomePage /> },
+          { path: "finance/cash-book", element: <CashBookPage /> },
+          {
+            path: "finance/bank",
+            element: (
+              <CashBookPage
+                title="Bank Transactions"
+                subtitle="Receipts and payments by bank transfer, JazzCash, EasyPaisa, cheque and other non-cash methods."
+                lockedAccount="NON_CASH"
+              />
+            ),
+          },
+          {
+            path: "finance/income-vs-expense",
+            element: <IncomeVsExpensePage />,
+          },
+          { path: "reports/expenses", element: <ExpenseReportPage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),

@@ -932,3 +932,107 @@ model FeeRefund {
   @@index([paidDate])
   @@map("fee_refunds")
 }
+
+// ---------------- PHASE 3F: expenses and other income ----------------
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  VOIDED
+}
+
+enum IncomeSource {
+  DONATION
+  TRANSPORT
+  RENTAL
+  EVENT
+  OTHER
+}
+
+enum IncomeStatus {
+  ACTIVE
+  VOIDED
+}
+
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  expenses Expense[]
+
+  @@map("expense_categories")
+}
+
+// Never deleted. Approved expenses are locked; a mistake is voided and re-entered.
+model Expense {
+  id              String        @id @default(cuid())
+  expenseNo       String        @unique
+  categoryId      String
+  description     String
+  amount          Decimal       @db.Decimal(14, 2)
+  expenseDate     DateTime      @db.Date
+  method          PaymentMethod
+  paidTo          String?
+  reference       String?
+  status          ExpenseStatus @default(PENDING)
+  createdById     String?
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  voidReason      String?
+  voidedAt        DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  category    ExpenseCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  attachments ExpenseAttachment[]
+
+  @@index([expenseDate])
+  @@index([status])
+  @@index([categoryId])
+  @@map("expenses")
+}
+
+model ExpenseAttachment {
+  id           String   @id @default(cuid())
+  expenseId    String
+  fileName     String
+  storedName   String   @unique
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Restrict)
+
+  @@index([expenseId])
+  @@map("expense_attachments")
+}
+
+// Income other than fees. Fee income comes from fee payments automatically.
+model OtherIncome {
+  id           String        @id @default(cuid())
+  incomeNo     String        @unique
+  source       IncomeSource
+  description  String
+  amount       Decimal       @db.Decimal(14, 2)
+  incomeDate   DateTime      @db.Date
+  method       PaymentMethod
+  receivedFrom String?
+  reference    String?
+  status       IncomeStatus  @default(ACTIVE)
+  voidReason   String?
+  voidedAt     DateTime?
+  createdById  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([incomeDate])
+  @@index([status])
+  @@map("other_income")
+}

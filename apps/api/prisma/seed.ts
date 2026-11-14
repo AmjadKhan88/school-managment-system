@@ -72,6 +72,27 @@ async function main() {
     });
   }
 
+  // 2c. Default expense categories
+  const expenseCategories = [
+    "Electricity",
+    "Gas",
+    "Water",
+    "Rent",
+    "Salaries",
+    "Stationery",
+    "Maintenance",
+    "Internet",
+    "Transport",
+    "Other expenses",
+  ];
+  for (const [i, name] of expenseCategories.entries()) {
+    await (prisma as any).expenseCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, sortOrder: i + 1 },
+    });
+  }
+
   // 3. Default roles + grants
   for (const r of DEFAULT_ROLES) {
     const role = await prisma.role.upsert({

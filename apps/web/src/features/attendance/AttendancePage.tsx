@@ -25,12 +25,21 @@ interface Student {
   status: Status | null;
   markedBy: string | null;
   updatedBy: string | null;
+  leave: {
+    applicationNo: string;
+    type: string;
+    status: "APPROVED" | "PENDING";
+  } | null;
 }
 interface Register {
   date: string;
   taken: boolean;
   students: Student[];
 }
+
+/** A saved mark wins. Otherwise approved leave pre-fills Leave, and everyone else starts as present. */
+const initialStatus = (s: Student): Status =>
+  s.status ?? (s.leave?.status === "APPROVED" ? "LEAVE" : "PRESENT");
 
 export default function AttendancePage() {
   const qc = useQueryClient();
@@ -73,7 +82,7 @@ export default function AttendancePage() {
     if (data)
       setMarks(
         Object.fromEntries(
-          data.students.map((s) => [s.enrollmentId, s.status ?? "PRESENT"]),
+          data.students.map((s) => [s.enrollmentId, initialStatus(s)]),
         ),
       );
   }, [data]);
@@ -95,9 +104,7 @@ export default function AttendancePage() {
   const dirty =
     !!data &&
     (!data.taken ||
-      data.students.some(
-        (s) => (s.status ?? "PRESENT") !== marks[s.enrollmentId],
-      ));
+      data.students.some((s) => initialStatus(s) !== marks[s.enrollmentId]));
   const markedBy = data?.students.find((s) => s.markedBy)?.markedBy;
 
   const save = useMutation({
@@ -292,6 +299,20 @@ export default function AttendancePage() {
                           <span className="block text-xs text-slate-500">
                             {s.admissionNo}
                           </span>
+                          {s.leave && (
+                            <span
+                              className={cn(
+                                "mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                                s.leave.status === "APPROVED"
+                                  ? "bg-sky-100 text-sky-700"
+                                  : "bg-amber-100 text-amber-700",
+                              )}
+                            >
+                              {s.leave.status === "APPROVED"
+                                ? `On approved leave (${s.leave.applicationNo})`
+                                : `Leave pending (${s.leave.applicationNo})`}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-2">
                           <div

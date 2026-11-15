@@ -383,18 +383,19 @@ model Student {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  user         User?               @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
-  guardians    StudentGuardian[]
-  documents    StudentDocument[]
-  enrollments  Enrollment[]
-  promotions   StudentPromotion[]
-  transfers    StudentTransfer[]
-  feeInvoices  FeeInvoice[]
-  feePayments  FeePayment[]
-  feeReminders FeeReminder[]
-  feeRefunds   FeeRefund[]
-  attendance   StudentAttendance[]
-  admission    Admission?
+  user              User?               @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
+  guardians         StudentGuardian[]
+  documents         StudentDocument[]
+  enrollments       Enrollment[]
+  promotions        StudentPromotion[]
+  transfers         StudentTransfer[]
+  feeInvoices       FeeInvoice[]
+  feePayments       FeePayment[]
+  feeReminders      FeeReminder[]
+  feeRefunds        FeeRefund[]
+  attendance        StudentAttendance[]
+  leaveApplications LeaveApplication[]
+  admission         Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
   @@index([status])
@@ -1076,4 +1077,60 @@ model StudentAttendance {
   @@index([sessionId, classId, sectionId, date])
   @@index([date])
   @@map("student_attendance")
+}
+
+// ---------------- PHASE 4B: leave applications ----------------
+
+enum LeaveApplicantType {
+  STUDENT
+  EMPLOYEE
+}
+
+enum LeaveType {
+  SICK
+  CASUAL
+  EMERGENCY
+  FAMILY
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// Applications are never deleted: they are approved, rejected or cancelled.
+// employeeId is filled in Phase 5 when staff exist; students use studentId.
+model LeaveApplication {
+  id                 String             @id @default(cuid())
+  applicationNo      String             @unique
+  applicantType      LeaveApplicantType @default(STUDENT)
+  studentId          String?
+  employeeId         String?
+  leaveType          LeaveType
+  startDate          DateTime           @db.Date
+  endDate            DateTime           @db.Date
+  days               Int
+  reason             String
+  status             LeaveStatus        @default(PENDING)
+  documentName       String?
+  documentStoredName String?            @unique
+  documentMime       String?
+  documentSize       Int?
+  submittedById      String?
+  decidedById        String?
+  decidedAt          DateTime?
+  rejectionReason    String?
+  cancelReason       String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  student Student? @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([studentId, status, startDate])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("leave_applications")
 }

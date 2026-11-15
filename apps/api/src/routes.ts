@@ -13,6 +13,7 @@ import { reportsRouter } from "./modules/reports/reports.routes";
 import { financeRouter } from "./modules/finance/finance.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 import { attendanceRouter } from "./modules/attendance/attendance.routes";
+import { leavesRouter } from "./modules/leaves/leaves.routes";
 
 export const apiRouter = Router();
 apiRouter.use("/health", healthRouter);
@@ -28,6 +29,7 @@ apiRouter.use("/reports", authenticate, reportsRouter);
 apiRouter.use("/finance", authenticate, financeRouter);
 apiRouter.use("/dashboard", authenticate, dashboardRouter);
 apiRouter.use("/attendance", authenticate, attendanceRouter);
+apiRouter.use("/leaves", authenticate, leavesRouter);
 
 // Later phases: register each new module here, e.g.
 // apiRouter.use('/students', authenticate, studentsRouter);

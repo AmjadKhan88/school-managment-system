@@ -34,6 +34,28 @@ export async function loadRegister(q: RegisterQuery) {
   });
   const byStudent = new Map(rows.map((r) => [r.studentId, r]));
 
+  // Approved or pending leave covering this date, so the register can pre-fill and flag it.
+  const leaves = await prisma.leaveApplication.findMany({
+    where: {
+      applicantType: "STUDENT",
+      studentId: { in: enrollments.map((e) => e.studentId) },
+      status: { in: ["APPROVED", "PENDING"] },
+      startDate: { lte: q.date },
+      endDate: { gte: q.date },
+    },
+    orderBy: { status: "asc" }, // APPROVED sorts before PENDING
+    select: {
+      studentId: true,
+      status: true,
+      applicationNo: true,
+      leaveType: true,
+    },
+  });
+  const leaveOf = new Map<string, (typeof leaves)[number]>();
+  leaves.forEach((l) => {
+    if (!leaveOf.has(l.studentId!)) leaveOf.set(l.studentId!, l);
+  });
+
   const userIds = rows
     .flatMap((r) => [r.markedById, r.updatedById])
     .filter((x): x is string => !!x);
@@ -59,6 +81,13 @@ export async function loadRegister(q: RegisterQuery) {
         remarks: a?.remarks ?? null,
         markedBy: a?.markedById ? (name.get(a.markedById) ?? null) : null,
         updatedBy: a?.updatedById ? (name.get(a.updatedById) ?? null) : null,
+        leave: leaveOf.get(e.studentId)
+          ? {
+              applicationNo: leaveOf.get(e.studentId)!.applicationNo,
+              type: leaveOf.get(e.studentId)!.leaveType,
+              status: leaveOf.get(e.studentId)!.status,
+            }
+          : null,
       };
     }),
   };

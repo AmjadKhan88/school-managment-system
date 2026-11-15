@@ -205,22 +205,31 @@ dashboardRouter.get(
         : null;
     const current = money?.rows[money.rows.length - 1];
 
-    const [students, fees, pendingExpenses, pendingRefunds, pendingDiscounts] =
-      await Promise.all([
-        can("students")
-          ? studentsSection(session?.id, monthStart, months, range, today)
-          : null,
-        can("fees") ? feesSection(today, month) : null,
-        can("expenses", "APPROVE")
-          ? prisma.expense.count({ where: { status: "PENDING" } })
-          : 0,
-        can("refunds", "APPROVE")
-          ? prisma.feeRefund.count({ where: { status: "PENDING" } })
-          : 0,
-        can("discounts", "APPROVE")
-          ? prisma.feeDiscount.count({ where: { status: "PENDING" } })
-          : 0,
-      ]);
+    const [
+      students,
+      fees,
+      pendingExpenses,
+      pendingRefunds,
+      pendingDiscounts,
+      pendingLeaves,
+    ] = await Promise.all([
+      can("students")
+        ? studentsSection(session?.id, monthStart, months, range, today)
+        : null,
+      can("fees") ? feesSection(today, month) : null,
+      can("expenses", "APPROVE")
+        ? prisma.expense.count({ where: { status: "PENDING" } })
+        : 0,
+      can("refunds", "APPROVE")
+        ? prisma.feeRefund.count({ where: { status: "PENDING" } })
+        : 0,
+      can("discounts", "APPROVE")
+        ? prisma.feeDiscount.count({ where: { status: "PENDING" } })
+        : 0,
+      can("leaves", "APPROVE")
+        ? prisma.leaveApplication.count({ where: { status: "PENDING" } })
+        : 0,
+    ]);
 
     ok(res, {
       asOf: now.toISOString(),
@@ -274,6 +283,12 @@ dashboardRouter.get(
           label: "Discounts waiting for approval",
           count: pendingDiscounts,
           to: "/fees/discounts",
+        },
+        {
+          key: "leaves",
+          label: "Leave applications waiting for a decision",
+          count: pendingLeaves,
+          to: "/attendance/leaves",
         },
       ].filter((a) => a.count > 0),
     });

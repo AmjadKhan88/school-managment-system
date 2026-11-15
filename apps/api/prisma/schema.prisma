@@ -242,6 +242,7 @@ model Class {
   enquiries     AdmissionEnquiry[]
   feeStructures FeeStructure[]
   feeInvoices   FeeInvoice[]
+  attendance    StudentAttendance[]
 
   @@map("classes")
 }
@@ -255,9 +256,10 @@ model Section {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  class       Class        @relation(fields: [classId], references: [id], onDelete: Restrict)
+  class       Class               @relation(fields: [classId], references: [id], onDelete: Restrict)
   enrollments Enrollment[]
   feeInvoices FeeInvoice[]
+  attendance  StudentAttendance[]
 
   @@unique([classId, name])
   @@map("sections")
@@ -381,7 +383,7 @@ model Student {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  user         User?              @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
+  user         User?               @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
   guardians    StudentGuardian[]
   documents    StudentDocument[]
   enrollments  Enrollment[]
@@ -391,6 +393,7 @@ model Student {
   feePayments  FeePayment[]
   feeReminders FeeReminder[]
   feeRefunds   FeeRefund[]
+  attendance   StudentAttendance[]
   admission    Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -465,6 +468,7 @@ model Enrollment {
   feeAssignment StudentFeeAssignment?
   feeInvoices   FeeInvoice[]
   feeDiscounts  FeeDiscount[]
+  attendance    StudentAttendance[]
 
   @@unique([studentId, sessionId]) // one class per student per session
   @@unique([sessionId, sectionId, rollNo]) // no duplicate roll numbers in a section
@@ -1035,4 +1039,41 @@ model OtherIncome {
   @@index([incomeDate])
   @@index([status])
   @@map("other_income")
+}
+
+// ---------------- PHASE 4A: student attendance ----------------
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  LEAVE
+  HALF_DAY
+}
+
+// Class, section and session are copied onto each row so old reports stay correct after a student moves.
+model StudentAttendance {
+  id           String           @id @default(cuid())
+  enrollmentId String
+  studentId    String
+  sessionId    String
+  classId      String
+  sectionId    String
+  date         DateTime         @db.Date
+  status       AttendanceStatus
+  remarks      String?
+  markedById   String?
+  updatedById  String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  class      Class      @relation(fields: [classId], references: [id], onDelete: Restrict)
+  section    Section    @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+
+  @@unique([studentId, date]) // one record per student per day
+  @@index([sessionId, classId, sectionId, date])
+  @@index([date])
+  @@map("student_attendance")
 }

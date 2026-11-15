@@ -7,6 +7,7 @@ import {
   emptyCounts,
   LETTER,
   recorded,
+  Status,
 } from "./attendance.calc";
 import type { ReportQuery, ReportType } from "./attendance.schema";
 
@@ -194,13 +195,13 @@ async function monthly(q: ReportQuery, sessionId: string): Promise<Report> {
     Map<number, (typeof records)[number]["status"]>
   >();
   records.forEach((r) => {
-    const d = perStudent.get(r.studentId) ?? new Map();
+    const d = perStudent.get(r.studentId) ?? new Map<number, Status>();
     d.set(r.date.getUTCDate(), r.status);
     perStudent.set(r.studentId, d);
   });
 
   const rows = enrollments.map((e) => {
-    const marks = perStudent.get(e.studentId) ?? new Map();
+    const marks = perStudent.get(e.studentId) ?? new Map<number, Status>();
     const c = emptyCounts();
     marks.forEach((s) => addStatus(c, s));
     const base: Record<string, Cell> = {

@@ -15,6 +15,11 @@ import {
 import { monthlyFinance } from "../finance/finance.service";
 import { ZERO } from "../fees/invoices.calc";
 import { fillMonths } from "./dashboard.calc";
+import {
+  addStatus,
+  attendancePercent,
+  emptyCounts,
+} from "../attendance/attendance.calc";
 
 export const dashboardRouter = Router();
 const querySchema = z.object({ sessionId: optId });
@@ -26,6 +31,7 @@ async function studentsSection(
   monthStart: Date,
   months: string[],
   range: { from: string; to: string },
+  today: Date,
 ) {
   const { from, to } = monthBounds(range.from, range.to);
   const live = { archivedAt: null } as const;
@@ -47,6 +53,27 @@ async function studentsSection(
       SELECT to_char(a."admissionDate", 'YYYY-MM') AS month, COUNT(*)::int AS n
       FROM admissions a WHERE a."admissionDate" BETWEEN ${from} AND ${to} GROUP BY 1`),
     ]);
+
+  const [attGroups, enrolledToday] = await Promise.all([
+    prisma.studentAttendance.groupBy({
+      by: ["status"],
+      where: { date: today },
+      _count: { _all: true },
+    }),
+    sessionId
+      ? prisma.enrollment.count({
+          where: {
+            sessionId,
+            status: "ENROLLED",
+            student: { status: "ACTIVE", archivedAt: null },
+          },
+        })
+      : Promise.resolve(0),
+  ]);
+  const att = emptyCounts();
+  attGroups.forEach((g) => addStatus(att, g.status, g._count._all));
+  const markedToday =
+    att.present + att.absent + att.late + att.leave + att.halfDay;
 
   let byClass: { className: string; level: number; count: number }[] = [];
   if (sessionId) {
@@ -81,6 +108,12 @@ async function studentsSection(
     newThisMonth,
     byClass,
     admissions: fillMonths(admissionRows, months),
+    attendanceToday: {
+      ...att,
+      marked: markedToday,
+      enrolled: enrolledToday,
+      percent: attendancePercent(att),
+    },
   };
 }
 
@@ -175,7 +208,7 @@ dashboardRouter.get(
     const [students, fees, pendingExpenses, pendingRefunds, pendingDiscounts] =
       await Promise.all([
         can("students")
-          ? studentsSection(session?.id, monthStart, months, range)
+          ? studentsSection(session?.id, monthStart, months, range, today)
           : null,
         can("fees") ? feesSection(today, month) : null,
         can("expenses", "APPROVE")

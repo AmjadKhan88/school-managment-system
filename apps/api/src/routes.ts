@@ -12,6 +12,7 @@ import { feesRouter } from "./modules/fees/fees.routes";
 import { reportsRouter } from "./modules/reports/reports.routes";
 import { financeRouter } from "./modules/finance/finance.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
+import { attendanceRouter } from "./modules/attendance/attendance.routes";
 
 export const apiRouter = Router();
 apiRouter.use("/health", healthRouter);
@@ -26,6 +27,7 @@ apiRouter.use("/fees", authenticate, feesRouter);
 apiRouter.use("/reports", authenticate, reportsRouter);
 apiRouter.use("/finance", authenticate, financeRouter);
 apiRouter.use("/dashboard", authenticate, dashboardRouter);
+apiRouter.use("/attendance", authenticate, attendanceRouter);
 
 // Later phases: register each new module here, e.g.
 // apiRouter.use('/students', authenticate, studentsRouter);

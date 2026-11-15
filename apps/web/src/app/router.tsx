@@ -40,6 +40,8 @@ import IncomePage from "@/features/finance/IncomePage";
 import CashBookPage from "@/features/finance/CashBookPage";
 import IncomeVsExpensePage from "@/features/finance/IncomeVsExpensePage";
 import ExpenseReportPage from "@/features/finance/ExpenseReportPage";
+import AttendancePage from "@/features/attendance/AttendancePage";
+import AttendanceReportsPage from "@/features/attendance/AttendanceReportsPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -78,6 +80,10 @@ const implemented = new Set([
   "/finance/cash-book",
   "/finance/bank",
   "/finance/income-vs-expense",
+  "/attendance/students",
+  "/attendance/reports",
+  "/attendance/monthly",
+  "/attendance/late",
 ]);
 
 export const router = createBrowserRouter([
@@ -152,6 +158,19 @@ export const router = createBrowserRouter([
             element: <IncomeVsExpensePage />,
           },
           { path: "reports/expenses", element: <ExpenseReportPage /> },
+          { path: "attendance/students", element: <AttendancePage /> },
+          {
+            path: "attendance/reports",
+            element: <AttendanceReportsPage key="daily" initial="daily" />,
+          },
+          {
+            path: "attendance/monthly",
+            element: <AttendanceReportsPage key="monthly" initial="monthly" />,
+          },
+          {
+            path: "attendance/late",
+            element: <AttendanceReportsPage key="late" initial="late" />,
+          },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),

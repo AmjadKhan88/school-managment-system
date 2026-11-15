@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
+  CalendarCheck,
   Hourglass,
   Loader2,
   Receipt,
@@ -47,6 +48,16 @@ interface Dashboard {
     newThisMonth: number;
     byClass: { className: string; count: number }[];
     admissions: { month: string; count: number }[];
+    attendanceToday: {
+      present: number;
+      absent: number;
+      late: number;
+      leave: number;
+      halfDay: number;
+      marked: number;
+      enrolled: number;
+      percent: number | null;
+    };
   };
   fees: null | {
     pending: string;
@@ -275,6 +286,28 @@ export default function DashboardPage() {
                   value={String(d.students.newThisMonth)}
                   to="/students/enquiries"
                   tile="bg-sky-50 text-sky-600"
+                />
+                <Stat
+                  icon={CalendarCheck}
+                  label="Today's attendance"
+                  value={
+                    d.students.attendanceToday.marked
+                      ? `${d.students.attendanceToday.percent ?? 0}%`
+                      : "Not taken"
+                  }
+                  hint={
+                    d.students.attendanceToday.marked
+                      ? `${d.students.attendanceToday.present} present · ${d.students.attendanceToday.absent} absent · ${d.students.attendanceToday.late} late`
+                      : `${d.students.attendanceToday.enrolled} students enrolled`
+                  }
+                  to="/attendance/students"
+                  tone={
+                    d.students.attendanceToday.marked &&
+                    (d.students.attendanceToday.percent ?? 100) < 75
+                      ? "text-rose-600"
+                      : "text-ink-950"
+                  }
+                  tile="bg-indigo-50 text-indigo-600"
                 />
               </>
             )}

@@ -187,6 +187,7 @@ model AcademicSession {
   school        School         @relation(fields: [schoolId], references: [id], onDelete: Restrict)
   enrollments   Enrollment[]
   feeStructures FeeStructure[]
+  exams         Exam[]
 
   @@unique([schoolId, name])
   @@index([schoolId, isActive])
@@ -243,6 +244,8 @@ model Class {
   feeStructures FeeStructure[]
   feeInvoices   FeeInvoice[]
   attendance    StudentAttendance[]
+  examClasses   ExamClass[]
+  examSubjects  ExamSubject[]
 
   @@map("classes")
 }
@@ -273,7 +276,8 @@ model Subject {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  classes ClassSubject[]
+  classes      ClassSubject[]
+  examSubjects ExamSubject[]
 
   @@map("subjects")
 }
@@ -1133,4 +1137,115 @@ model LeaveApplication {
   @@index([status])
   @@index([startDate, endDate])
   @@map("leave_applications")
+}
+
+// ---------------- PHASE 4C: grading and exam setup ----------------
+
+enum ExamType {
+  MONTHLY_TEST
+  WEEKLY_TEST
+  MIDTERM
+  FINAL
+  PRACTICAL
+  ANNUAL
+}
+
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+}
+
+model GradingScale {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bands GradeBand[]
+  exams Exam[]
+
+  @@map("grading_scales")
+}
+
+// A grade starts at minPercent and runs up to the next grade's minPercent.
+model GradeBand {
+  id         String  @id @default(cuid())
+  scaleId    String
+  grade      String
+  minPercent Decimal @db.Decimal(5, 2)
+  gradePoint Decimal @db.Decimal(3, 2)
+  remark     String?
+
+  scale GradingScale @relation(fields: [scaleId], references: [id], onDelete: Cascade)
+
+  @@unique([scaleId, grade])
+  @@unique([scaleId, minPercent])
+  @@map("grade_bands")
+}
+
+model Exam {
+  id             String     @id @default(cuid())
+  name           String
+  type           ExamType
+  sessionId      String
+  startDate      DateTime   @db.Date
+  endDate        DateTime   @db.Date
+  status         ExamStatus @default(DRAFT)
+  gradingScaleId String? // null = use the default scale
+  notes          String?
+  createdById    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  session      AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  gradingScale GradingScale?   @relation(fields: [gradingScaleId], references: [id], onDelete: Restrict)
+  classes      ExamClass[]
+  subjects     ExamSubject[]
+
+  @@unique([sessionId, name])
+  @@index([sessionId, startDate])
+  @@map("exams")
+}
+
+// Which classes sit the exam, with default marks for their papers.
+model ExamClass {
+  examId       String
+  classId      String
+  totalMarks   Int
+  passingMarks Int
+
+  exam  Exam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class Class @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  @@id([examId, classId])
+  @@map("exam_classes")
+}
+
+// One paper: a subject for a class in an exam. Date, time and room are filled in on the schedule.
+model ExamSubject {
+  id             String    @id @default(cuid())
+  examId         String
+  classId        String
+  subjectId      String
+  examDate       DateTime? @db.Date
+  startTime      String? // "09:00"
+  endTime        String?
+  room           String?
+  totalMarks     Int
+  practicalMarks Int       @default(0) // part of totalMarks that is practical
+  passingMarks   Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Restrict)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+
+  @@unique([examId, classId, subjectId])
+  @@index([examId, examDate])
+  @@index([examDate, room])
+  @@map("exam_subjects")
 }

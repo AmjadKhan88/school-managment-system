@@ -141,7 +141,37 @@ async function main() {
   console.log(`Seed complete. Sign in with ${env.SEED_ADMIN_EMAIL}`);
 }
 
+async function seedGradingScale() {
+  // 2d. Default grading scale (editable later in the app)
+  if ((await prisma.gradingScale.count()) === 0) {
+    const bands: [string, number, number, string][] = [
+      ["A+", 90, 4.0, "Outstanding"],
+      ["A", 80, 3.7, "Excellent"],
+      ["B", 70, 3.0, "Very good"],
+      ["C", 60, 2.0, "Good"],
+      ["D", 50, 1.0, "Satisfactory"],
+      ["E", 40, 0.5, "Needs improvement"],
+      ["F", 0, 0.0, "Fail"],
+    ];
+    await prisma.gradingScale.create({
+      data: {
+        name: "Standard",
+        isDefault: true,
+        bands: {
+          create: bands.map(([grade, minPercent, gradePoint, remark]) => ({
+            grade,
+            minPercent,
+            gradePoint,
+            remark,
+          })),
+        },
+      },
+    });
+  }
+}
+
 main()
+  .then(() => seedGradingScale())
   .catch((e) => {
     console.error(e);
     process.exit(1);

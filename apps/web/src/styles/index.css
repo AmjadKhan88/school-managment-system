@@ -25,45 +25,29 @@
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 
+/* Prints only the open voucher, receipt or date sheet when body has the print-voucher class */
 @media print {
-
-  aside,
-  header,
-  .no-print {
-    display: none !important;
+  body.print-voucher * {
+    visibility: hidden;
   }
 
-  div[class*="lg:pl-"] {
-    padding-left: 0 !important;
+  body.print-voucher #voucher,
+  body.print-voucher #voucher *,
+  body.print-voucher #receipt,
+  body.print-voucher #receipt *,
+  body.print-voucher #datesheet,
+  body.print-voucher #datesheet * {
+    visibility: visible;
   }
 
-  body {
+  body.print-voucher #voucher,
+  body.print-voucher #receipt,
+  body.print-voucher #datesheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 24px;
     background: #fff;
   }
-
-  .card {
-    box-shadow: none;
-  }
-
-    body.print-voucher * {
-      visibility: hidden;
-    }
-  
-    body.print-voucher #voucher,
-    body.print-voucher #voucher *,
-    body.print-voucher #receipt,
-    body.print-voucher #receipt * {
-      visibility: visible;
-    }
-  
-    body.print-voucher #voucher,
-    body.print-voucher #receipt {
-      position: fixed;
-      inset: 0;
-      padding: 24px;
-      background: #fff;
-      overflow: visible;
-    }
-    
-        
 }

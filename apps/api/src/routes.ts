@@ -15,6 +15,7 @@ import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 import { attendanceRouter } from "./modules/attendance/attendance.routes";
 import { leavesRouter } from "./modules/leaves/leaves.routes";
 import { examsRouter, gradingRouter } from "./modules/exams/exams.routes";
+import { marksRouter, resultsRouter } from "./modules/exams/marks.routes";
 
 export const apiRouter = Router();
 apiRouter.use("/health", healthRouter);
@@ -33,6 +34,8 @@ apiRouter.use("/attendance", authenticate, attendanceRouter);
 apiRouter.use("/leaves", authenticate, leavesRouter);
 apiRouter.use("/grading", authenticate, gradingRouter);
 apiRouter.use("/exams", authenticate, examsRouter);
+apiRouter.use("/marks", authenticate, marksRouter);
+apiRouter.use("/results", authenticate, resultsRouter);
 
 // Later phases: register each new module here, e.g.
 // apiRouter.use('/students', authenticate, studentsRouter);

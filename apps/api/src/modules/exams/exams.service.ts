@@ -141,6 +141,16 @@ export async function updateExam(id: string, input: ExamInput) {
   const current = new Set(exam.classes.map((c) => c.classId));
   const added = input.classes.filter((c) => !current.has(c.classId));
 
+  if (removed.length) {
+    const marked = await prisma.examMark.count({
+      where: { examSubject: { examId: id, classId: { in: removed } } },
+    });
+    if (marked > 0)
+      throw ApiError.conflict(
+        "Marks have already been entered for a class you are removing. Only classes without marks can be removed.",
+      );
+  }
+
   return prisma.$transaction(async (tx) => {
     await tx.exam.update({
       where: { id },
@@ -202,6 +212,16 @@ export async function setStatus(examId: string, status: "DRAFT" | "PUBLISHED") {
     throw ApiError.conflict("This exam is completed and locked");
   if (exam.status === status) return { id: examId, status };
 
+  if (status === "DRAFT") {
+    const marks = await prisma.examMark.count({
+      where: { examSubject: { examId } },
+    });
+    if (marks > 0)
+      throw ApiError.conflict(
+        "Marks have already been entered, so this exam can no longer be moved back to draft.",
+      );
+  }
+
   if (status === "PUBLISHED") {
     const total = await prisma.examSubject.count({ where: { examId } });
     if (total === 0)
@@ -236,13 +256,42 @@ export async function saveSchedule(examId: string, input: ScheduleInput) {
 
   const papers = await prisma.examSubject.findMany({
     where: { examId, classId: input.classId },
-    select: { subjectId: true },
+    select: {
+      id: true,
+      subjectId: true,
+      totalMarks: true,
+      practicalMarks: true,
+      passingMarks: true,
+    },
   });
   const known = new Set(papers.map((p) => p.subjectId));
   if (input.rows.some((r) => !known.has(r.subjectId)))
     throw ApiError.badRequest(
       'A subject is not part of this exam. Use "Sync subjects" and reload.',
     );
+
+  // Once marks exist for a paper, its marks scheme is frozen. Dates, times and rooms can still change.
+  const marked = new Set(
+    (
+      await prisma.examMark.groupBy({
+        by: ["examSubjectId"],
+        where: { examSubject: { examId, classId: input.classId } },
+      })
+    ).map((g) => g.examSubjectId),
+  );
+  for (const r of input.rows) {
+    const p = papers.find((x) => x.subjectId === r.subjectId)!;
+    if (
+      marked.has(p.id) &&
+      (p.totalMarks !== r.totalMarks ||
+        p.practicalMarks !== r.practicalMarks ||
+        p.passingMarks !== r.passingMarks)
+    ) {
+      throw ApiError.conflict(
+        "Marks were already entered for a paper, so its total, practical and passing marks can no longer be changed.",
+      );
+    }
+  }
 
   const outside = input.rows.filter(
     (r) =>

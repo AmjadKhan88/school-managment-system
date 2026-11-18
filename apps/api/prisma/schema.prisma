@@ -246,6 +246,7 @@ model Class {
   attendance    StudentAttendance[]
   examClasses   ExamClass[]
   examSubjects  ExamSubject[]
+  examResults   ExamResult[]
 
   @@map("classes")
 }
@@ -399,6 +400,8 @@ model Student {
   feeRefunds        FeeRefund[]
   attendance        StudentAttendance[]
   leaveApplications LeaveApplication[]
+  examMarks         ExamMark[]
+  examResults       ExamResult[]
   admission         Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -474,6 +477,8 @@ model Enrollment {
   feeInvoices   FeeInvoice[]
   feeDiscounts  FeeDiscount[]
   attendance    StudentAttendance[]
+  examMarks     ExamMark[]
+  examResults   ExamResult[]
 
   @@unique([studentId, sessionId]) // one class per student per session
   @@unique([sessionId, sectionId, rollNo]) // no duplicate roll numbers in a section
@@ -1204,6 +1209,7 @@ model Exam {
   gradingScale GradingScale?   @relation(fields: [gradingScaleId], references: [id], onDelete: Restrict)
   classes      ExamClass[]
   subjects     ExamSubject[]
+  results      ExamResult[]
 
   @@unique([sessionId, name])
   @@index([sessionId, startDate])
@@ -1212,10 +1218,12 @@ model Exam {
 
 // Which classes sit the exam, with default marks for their papers.
 model ExamClass {
-  examId       String
-  classId      String
-  totalMarks   Int
-  passingMarks Int
+  examId               String
+  classId              String
+  totalMarks           Int
+  passingMarks         Int
+  resultsPublishedAt   DateTime?
+  resultsPublishedById String?
 
   exam  Exam  @relation(fields: [examId], references: [id], onDelete: Cascade)
   class Class @relation(fields: [classId], references: [id], onDelete: Restrict)
@@ -1240,12 +1248,81 @@ model ExamSubject {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
-  class   Class   @relation(fields: [classId], references: [id], onDelete: Restrict)
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  exam    Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  class   Class      @relation(fields: [classId], references: [id], onDelete: Restrict)
+  subject Subject    @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  marks   ExamMark[]
 
   @@unique([examId, classId, subjectId])
   @@index([examId, examDate])
   @@index([examDate, room])
   @@map("exam_subjects")
+}
+
+// ---------------- PHASE 4D: marks and results ----------------
+
+enum MarkStatus {
+  ENTERED
+  ABSENT
+  EXEMPT
+}
+
+enum ResultStatus {
+  PASS
+  FAIL
+}
+
+// One student's mark in one paper. grade, gradePoint and passed are a snapshot written when results are published.
+model ExamMark {
+  id            String     @id @default(cuid())
+  examSubjectId String
+  enrollmentId  String
+  studentId     String
+  status        MarkStatus @default(ENTERED)
+  theory        Decimal?   @db.Decimal(6, 2)
+  practical     Decimal?   @db.Decimal(6, 2)
+  remarks       String?
+  grade         String?
+  gradePoint    Decimal?   @db.Decimal(3, 2)
+  passed        Boolean?
+  enteredById   String?
+  updatedById   String?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  examSubject ExamSubject @relation(fields: [examSubjectId], references: [id], onDelete: Restrict)
+  enrollment  Enrollment  @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  student     Student     @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([examSubjectId, studentId])
+  @@index([studentId])
+  @@map("exam_marks")
+}
+
+// Published result for a student in an exam. Frozen when published; removed only by unpublishing.
+model ExamResult {
+  id             String       @id @default(cuid())
+  examId         String
+  classId        String
+  enrollmentId   String
+  studentId      String
+  totalObtained  Decimal      @db.Decimal(8, 2)
+  totalMax       Decimal      @db.Decimal(8, 2)
+  percentage     Decimal?     @db.Decimal(5, 2)
+  grade          String?
+  gpa            Decimal?     @db.Decimal(3, 2)
+  result         ResultStatus
+  failedSubjects Int          @default(0)
+  position       Int?
+  publishedAt    DateTime     @default(now())
+  publishedById  String?
+
+  exam       Exam       @relation(fields: [examId], references: [id], onDelete: Restrict)
+  class      Class      @relation(fields: [classId], references: [id], onDelete: Restrict)
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([examId, studentId])
+  @@index([examId, classId])
+  @@map("exam_results")
 }

@@ -402,6 +402,7 @@ model Student {
   leaveApplications LeaveApplication[]
   examMarks         ExamMark[]
   examResults       ExamResult[]
+  reportCardRemarks ReportCardRemark[]
   admission         Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -1205,11 +1206,12 @@ model Exam {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  session      AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
-  gradingScale GradingScale?   @relation(fields: [gradingScaleId], references: [id], onDelete: Restrict)
+  session      AcademicSession    @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  gradingScale GradingScale?      @relation(fields: [gradingScaleId], references: [id], onDelete: Restrict)
   classes      ExamClass[]
   subjects     ExamSubject[]
   results      ExamResult[]
+  remarks      ReportCardRemark[]
 
   @@unique([sessionId, name])
   @@index([sessionId, startDate])
@@ -1325,4 +1327,24 @@ model ExamResult {
   @@unique([examId, studentId])
   @@index([examId, classId])
   @@map("exam_results")
+}
+
+// ---------------- PHASE 4E: report card remarks ----------------
+
+// Kept apart from ExamResult so remarks survive an unpublish and republish.
+model ReportCardRemark {
+  id               String   @id @default(cuid())
+  examId           String
+  studentId        String
+  teacherRemarks   String?
+  principalRemarks String?
+  updatedById      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Restrict)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([examId, studentId])
+  @@map("report_card_remarks")
 }

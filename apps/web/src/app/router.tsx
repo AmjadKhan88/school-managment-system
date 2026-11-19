@@ -48,6 +48,8 @@ import ExamsPage from "@/features/exams/ExamsPage";
 import ExamSchedulePage from "@/features/exams/ExamSchedulePage";
 import MarksEntryPage from "@/features/exams/MarksEntryPage";
 import ClassResultsPage from "@/features/exams/ClassResultsPage";
+import ReportCardsPage from "@/features/exams/ReportCardsPage";
+import ReportCardPrintPage from "@/features/exams/ReportCardPrintPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -96,6 +98,7 @@ const implemented = new Set([
   "/academics/exam-schedule",
   "/academics/marks",
   "/academics/results",
+  "/academics/report-cards",
 ]);
 
 export const router = createBrowserRouter([
@@ -189,6 +192,7 @@ export const router = createBrowserRouter([
           { path: "academics/exam-schedule", element: <ExamSchedulePage /> },
           { path: "academics/marks", element: <MarksEntryPage /> },
           { path: "academics/results", element: <ClassResultsPage /> },
+          { path: "academics/report-cards", element: <ReportCardsPage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),
@@ -196,6 +200,7 @@ export const router = createBrowserRouter([
           { path: "*", element: <NotFoundPage /> },
         ],
       },
+      { path: "print/report-cards", element: <ReportCardPrintPage /> },
     ],
   },
 ]);

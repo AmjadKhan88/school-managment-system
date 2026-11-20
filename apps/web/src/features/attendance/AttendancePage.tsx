@@ -9,6 +9,7 @@ import { api, apiMessage } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/store/auth";
 import { Status, STATUS_META, STATUS_ORDER } from "./shared";
+import { useMyScope } from "@/features/staff/shared";
 
 interface SectionOption {
   id: string;
@@ -63,6 +64,17 @@ export default function AttendancePage() {
         })
       ).data.data,
   });
+
+  const scope = useMyScope(sessionId);
+  const only = scope.data?.restricted ? scope.data : null;
+  const classOptions = classes.data?.filter(
+    (c) => !only || only.classTeacher.some((x) => x.classId === c.id),
+  );
+  const sectionOptions = sections.data?.filter(
+    (s) =>
+      s.isActive &&
+      (!only || only.classTeacher.some((x) => x.sectionId === s.id)),
+  );
 
   const ready = !!(sessionId && classId && sectionId && date);
   const reg = useQuery({
@@ -197,6 +209,12 @@ export default function AttendancePage() {
               .map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
+                  {only && only.classTeacher.length === 0 && (
+                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                      You are not a class teacher of any section in this
+                      session, so there is no register for you to take.
+                    </div>
+                  )}
                 </option>
               ))}
           </select>

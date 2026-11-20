@@ -17,6 +17,7 @@ import { cn } from "@/lib/cn";
 import { downloadFile } from "@/lib/download";
 import { useAuth } from "@/store/auth";
 import { ExamRow } from "./shared";
+import { useMyScope } from "@/features/staff/shared";
 
 type Flag = "" | "ABSENT" | "EXEMPT";
 interface GridStudent {
@@ -52,6 +53,7 @@ interface Progress {
   papers: {
     subjectId: string;
     subjectName: string;
+    expected: number;
     entered: number;
     absent: number;
     exempt: number;
@@ -139,6 +141,15 @@ export default function MarksEntryPage() {
       (await api.get<{ data: ExamRow[] }>("/exams")).data.data,
   });
   const exam = exams.data?.find((e) => e.id === examId);
+
+  const scope = useMyScope(exam?.sessionId ?? "");
+  const onlyTeaching = scope.data?.restricted ? scope.data : null;
+  const classOptions = exam?.classes.filter(
+    (c) =>
+      !onlyTeaching ||
+      onlyTeaching.teaching.some((t) => t.classId === c.classId),
+  );
+
   useEffect(() => {
     if (exam && !exam.classes.some((c) => c.classId === classId)) {
       setClassId(exam.classes[0]?.classId ?? "");
@@ -389,7 +400,7 @@ export default function MarksEntryPage() {
           <option value="">
             {exam ? "Choose a class…" : "Choose an exam first"}
           </option>
-          {exam?.classes.map((c) => (
+          {classOptions?.map((c) => (
             <option key={c.classId} value={c.classId}>
               {c.className}
             </option>
@@ -406,7 +417,7 @@ export default function MarksEntryPage() {
       {progress.data && (
         <div className="mb-4 flex flex-wrap gap-2">
           {progress.data.papers.map((p) => {
-            const done = p.missing === 0 && progress.data.expected > 0;
+            const done = p.missing === 0 && p.expected > 0;
             return (
               <button
                 key={p.subjectId}
@@ -423,7 +434,7 @@ export default function MarksEntryPage() {
                 ) : null}
                 <span className="font-semibold">{p.subjectName}</span>
                 <span className="text-xs text-slate-500">
-                  {progress.data.expected - p.missing}/{progress.data.expected}
+                  {p.expected - p.missing}/{p.expected}
                 </span>
               </button>
             );

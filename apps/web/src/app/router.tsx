@@ -50,6 +50,15 @@ import MarksEntryPage from "@/features/exams/MarksEntryPage";
 import ClassResultsPage from "@/features/exams/ClassResultsPage";
 import ReportCardsPage from "@/features/exams/ReportCardsPage";
 import ReportCardPrintPage from "@/features/exams/ReportCardPrintPage";
+import StaffPage from "@/features/staff/StaffPage";
+import EmployeeProfilePage from "@/features/staff/EmployeeProfilePage";
+import DesignationsPage from "@/features/staff/DesignationsPage";
+import DepartmentsPage from "@/features/staff/DepartmentsPage";
+import {
+  ClassTeacherPage,
+  TeacherAssignmentPage,
+} from "@/features/staff/AssignmentPages";
+import PasswordPage from "@/pages/PasswordPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -99,6 +108,13 @@ const implemented = new Set([
   "/academics/marks",
   "/academics/results",
   "/academics/report-cards",
+  "/staff/members",
+  "/staff/teachers",
+  "/staff/designations",
+  "/staff/departments",
+  "/academics/class-teachers",
+  "/academics/teacher-assignments",
+  "/account/password",
 ]);
 
 export const router = createBrowserRouter([
@@ -193,6 +209,20 @@ export const router = createBrowserRouter([
           { path: "academics/marks", element: <MarksEntryPage /> },
           { path: "academics/results", element: <ClassResultsPage /> },
           { path: "academics/report-cards", element: <ReportCardsPage /> },
+          { path: "staff/members", element: <StaffPage key="all" /> },
+          {
+            path: "staff/teachers",
+            element: <StaffPage key="teachers" teachersOnly />,
+          },
+          { path: "staff/view/:id", element: <EmployeeProfilePage /> },
+          { path: "staff/designations", element: <DesignationsPage /> },
+          { path: "staff/departments", element: <DepartmentsPage /> },
+          { path: "academics/class-teachers", element: <ClassTeacherPage /> },
+          {
+            path: "academics/teacher-assignments",
+            element: <TeacherAssignmentPage />,
+          },
+          { path: "account/password", element: <PasswordPage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),

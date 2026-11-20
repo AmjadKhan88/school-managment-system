@@ -70,6 +70,7 @@ export async function getProfile(userId: string) {
     permissions: [...permissions],
     activeSession,
     sessions,
+    mustChangePassword: user.mustChangePassword,
   };
 }
 

@@ -19,16 +19,39 @@ import {
 } from "./attendance.schema";
 import { loadRegister, saveRegister } from "./attendance.service";
 import { buildReport } from "./reports.service";
+import { scopeFor } from "../staff/scope";
 
 export const attendanceRouter = Router();
+
+/** A scoped teacher may take attendance only for the section they are class teacher of. */
+async function guardRegister(
+  req: Request,
+  sessionId: string,
+  classId: string,
+  sectionId: string,
+) {
+  const scope = await scopeFor(req.user!, sessionId);
+  if (
+    scope &&
+    !scope.classTeacher.some(
+      (c) => c.classId === classId && c.sectionId === sectionId,
+    )
+  ) {
+    throw ApiError.forbidden(
+      "You can take attendance only for the section you are class teacher of",
+    );
+  }
+}
 
 attendanceRouter.get(
   "/register",
   authorize("attendance", "VIEW"),
   validate(registerQuerySchema, "query"),
-  h(async (req, res) =>
-    ok(res, await loadRegister(req.query as unknown as RegisterQuery)),
-  ),
+  h(async (req, res) => {
+    const q = req.query as unknown as RegisterQuery;
+    await guardRegister(req, q.sessionId, q.classId, q.sectionId);
+    ok(res, await loadRegister(q));
+  }),
 );
 
 attendanceRouter.put(
@@ -37,6 +60,7 @@ attendanceRouter.put(
   validate(saveRegisterSchema),
   h(async (req, res) => {
     const b = req.body as SaveRegister;
+    await guardRegister(req, b.sessionId, b.classId, b.sectionId);
     const perms = req.user!.permissions;
     const result = await saveRegister(b, {
       id: req.user!.id,

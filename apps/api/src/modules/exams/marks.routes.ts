@@ -28,6 +28,12 @@ import {
   publishResults,
   unpublishResults,
 } from "./results.service";
+import { prisma } from "../../config/prisma";
+import {
+  scopeFor,
+  sectionsForSubject,
+  subjectSectionsInClass,
+} from "../staff/scope";
 
 // =========================== Marks entry ===========================
 export const marksRouter = Router();
@@ -48,13 +54,47 @@ const receive = (req: Request, res: Response, next: NextFunction) =>
     );
   });
 
+/** For a scoped teacher: the sections they teach this subject in. undefined = unrestricted. */
+async function allowedSections(
+  req: Request,
+  examId: string,
+  classId: string,
+  subjectId: string,
+): Promise<Set<string> | undefined> {
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+    select: { sessionId: true },
+  });
+  if (!exam) return undefined; // the service reports "exam not found"
+  const scope = await scopeFor(req.user!, exam.sessionId);
+  if (!scope) return undefined;
+  const sections = sectionsForSubject(scope, classId, subjectId);
+  if (sections.size === 0)
+    throw ApiError.forbidden(
+      "You are not assigned to teach this subject in this class",
+    );
+  return sections;
+}
+
 marksRouter.get(
   "/progress",
   authorize("marks", "VIEW"),
   validate(progressQuerySchema, "query"),
   h(async (req, res) => {
     const q = req.query as unknown as { examId: string; classId: string };
-    ok(res, await progress(q.examId, q.classId));
+    const exam = await prisma.exam.findUnique({
+      where: { id: q.examId },
+      select: { sessionId: true },
+    });
+    const scope = exam ? await scopeFor(req.user!, exam.sessionId) : null;
+    ok(
+      res,
+      await progress(
+        q.examId,
+        q.classId,
+        scope ? subjectSectionsInClass(scope, q.classId) : undefined,
+      ),
+    );
   }),
 );
 
@@ -68,7 +108,15 @@ marksRouter.get(
       classId: string;
       subjectId: string;
     };
-    ok(res, await loadGrid(q.examId, q.classId, q.subjectId));
+    ok(
+      res,
+      await loadGrid(
+        q.examId,
+        q.classId,
+        q.subjectId,
+        await allowedSections(req, q.examId, q.classId, q.subjectId),
+      ),
+    );
   }),
 );
 
@@ -78,9 +126,16 @@ marksRouter.put(
   validate(saveGridSchema),
   h(async (req, res) => {
     const b = req.body as SaveGrid;
+    const onlySections = await allowedSections(
+      req,
+      b.examId,
+      b.classId,
+      b.subjectId,
+    );
     const result = await saveGrid(b, {
       id: req.user!.id,
       canEdit: req.user!.permissions.has("marks:EDIT"),
+      onlySections,
     });
     if (result.created + result.updated + result.cleared > 0) {
       await writeAudit(req, {
@@ -98,7 +153,6 @@ marksRouter.put(
   }),
 );
 
-// Marks as a spreadsheet. Also works as the template to fill in and import back.
 marksRouter.get(
   "/export",
   authorize("marks", "EXPORT"),
@@ -109,7 +163,12 @@ marksRouter.get(
       classId: string;
       subjectId: string;
     };
-    const f = await exportGrid(q.examId, q.classId, q.subjectId);
+    const f = await exportGrid(
+      q.examId,
+      q.classId,
+      q.subjectId,
+      await allowedSections(req, q.examId, q.classId, q.subjectId),
+    );
     await writeAudit(req, {
       action: "REPORT_EXPORTED",
       entity: "exam_marks",
@@ -119,7 +178,6 @@ marksRouter.get(
   }),
 );
 
-// Reads the spreadsheet and returns the values for the grid. Nothing is saved until the teacher presses Save.
 marksRouter.post(
   "/import/parse",
   authorize("marks", "CREATE"),
@@ -138,7 +196,16 @@ marksRouter.post(
       classId: string;
       subjectId: string;
     };
-    ok(res, await parseImport(file.buffer, b.examId, b.classId, b.subjectId));
+    ok(
+      res,
+      await parseImport(
+        file.buffer,
+        b.examId,
+        b.classId,
+        b.subjectId,
+        await allowedSections(req, b.examId, b.classId, b.subjectId),
+      ),
+    );
   }),
 );
 

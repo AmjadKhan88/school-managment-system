@@ -37,13 +37,18 @@ export const lockReason = (
       ? "Marks can be entered once the exam is published."
       : null;
 
-export const enrolledStudents = (sessionId: string, classId: string) =>
+export const enrolledStudents = (
+  sessionId: string,
+  classId: string,
+  onlySections?: Set<string>,
+) =>
   prisma.enrollment.findMany({
     where: {
       sessionId,
       classId,
       status: "ENROLLED",
       student: { status: "ACTIVE", archivedAt: null },
+      ...(onlySections && { sectionId: { in: [...onlySections] } }),
     },
     orderBy: [{ section: { name: "asc" } }, { rollNo: "asc" }],
     include: {
@@ -58,9 +63,14 @@ export async function loadGrid(
   examId: string,
   classId: string,
   subjectId: string,
+  onlySections?: Set<string>,
 ) {
   const { exam, ec, paper } = await context(examId, classId, subjectId);
-  const students = await enrolledStudents(exam.sessionId, classId);
+  const students = await enrolledStudents(
+    exam.sessionId,
+    classId,
+    onlySections,
+  );
   const marks = await prisma.examMark.findMany({
     where: {
       examSubjectId: paper!.id,
@@ -110,10 +120,14 @@ export async function loadGrid(
   };
 }
 
-/** How many students have a mark, absence or exemption in each paper. */
-export async function progress(examId: string, classId: string) {
+/** How many students have a mark, absence or exemption in each paper. A scoped teacher sees only the papers and sections they teach. */
+export async function progress(
+  examId: string,
+  classId: string,
+  allowed?: Map<string, Set<string>>,
+) {
   const { exam, ec } = await context(examId, classId);
-  const [papers, students] = await Promise.all([
+  const [allPapers, students] = await Promise.all([
     prisma.examSubject.findMany({
       where: { examId, classId },
       include: { subject: { select: { name: true } } },
@@ -121,32 +135,42 @@ export async function progress(examId: string, classId: string) {
     }),
     enrolledStudents(exam.sessionId, classId),
   ]);
-  const groups = await prisma.examMark.groupBy({
-    by: ["examSubjectId", "status"],
-    _count: { _all: true },
+  const papers = allowed
+    ? allPapers.filter((p) => allowed.has(p.subjectId))
+    : allPapers;
+  const marks = await prisma.examMark.findMany({
     where: {
       examSubject: { examId, classId },
       studentId: { in: students.map((s) => s.studentId) },
     },
+    select: { examSubjectId: true, studentId: true, status: true },
   });
-  const n = (id: string, st: MarkStatus) =>
-    groups.find((g) => g.examSubjectId === id && g.status === st)?._count
-      ._all ?? 0;
   return {
     expected: students.length,
     published: !!ec.resultsPublishedAt,
     locked: lockReason(exam, ec),
     papers: papers.map((p) => {
-      const entered = n(p.id, "ENTERED"),
-        absent = n(p.id, "ABSENT"),
-        exempt = n(p.id, "EXEMPT");
+      const sections = allowed?.get(p.subjectId);
+      const mine = sections
+        ? students.filter((s) => sections.has(s.sectionId))
+        : students;
+      const ids = new Set(mine.map((s) => s.studentId));
+      const ms = marks.filter(
+        (m) => m.examSubjectId === p.id && ids.has(m.studentId),
+      );
+      const count = (st: MarkStatus) =>
+        ms.filter((m) => m.status === st).length;
+      const entered = count("ENTERED"),
+        absent = count("ABSENT"),
+        exempt = count("EXEMPT");
       return {
         subjectId: p.subjectId,
         subjectName: p.subject.name,
+        expected: mine.length,
         entered,
         absent,
         exempt,
-        missing: students.length - entered - absent - exempt,
+        missing: mine.length - entered - absent - exempt,
       };
     }),
   };
@@ -154,7 +178,7 @@ export async function progress(examId: string, classId: string) {
 
 export async function saveGrid(
   input: SaveGrid,
-  who: { id: string; canEdit: boolean },
+  who: { id: string; canEdit: boolean; onlySections?: Set<string> },
 ) {
   const { exam, ec, paper } = await context(
     input.examId,
@@ -164,7 +188,11 @@ export async function saveGrid(
   const reason = lockReason(exam, ec);
   if (reason) throw ApiError.conflict(reason);
 
-  const students = await enrolledStudents(exam.sessionId, input.classId);
+  const students = await enrolledStudents(
+    exam.sessionId,
+    input.classId,
+    who.onlySections,
+  );
   const known = new Map(students.map((s) => [s.id, s]));
   if (input.entries.some((e) => !known.has(e.enrollmentId)))
     throw ApiError.badRequest(
@@ -287,8 +315,9 @@ export async function exportGrid(
   examId: string,
   classId: string,
   subjectId: string,
+  onlySections?: Set<string>,
 ) {
-  const g = await loadGrid(examId, classId, subjectId);
+  const g = await loadGrid(examId, classId, subjectId, onlySections);
   const hasPractical = g.paper.practicalMarks > 0;
   const columns = [
     { header: "Admission no", key: "adm", width: 16 },
@@ -361,8 +390,9 @@ export async function parseImport(
   examId: string,
   classId: string,
   subjectId: string,
+  onlySections?: Set<string>,
 ) {
-  const g = await loadGrid(examId, classId, subjectId);
+  const g = await loadGrid(examId, classId, subjectId, onlySections);
   const byAdmission = new Map(
     g.students.map((s) => [s.admissionNo.toLowerCase(), s]),
   );

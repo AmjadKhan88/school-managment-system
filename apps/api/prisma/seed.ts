@@ -168,6 +168,41 @@ async function seedGradingScale() {
       },
     });
   }
+
+  // 2e. Default designations and departments (editable in the app)
+  const designations: [string, boolean][] = [
+    ["Principal", false],
+    ["Vice Principal", false],
+    ["Senior Teacher", true],
+    ["Teacher", true],
+    ["Accountant", false],
+    ["Clerk", false],
+    ["Librarian", false],
+    ["Driver", false],
+    ["Security Guard", false],
+    ["Support Staff", false],
+  ];
+  for (const [i, [name, isTeaching]] of designations.entries()) {
+    await prisma.designation.upsert({
+      where: { name },
+      update: {},
+      create: { name, isTeaching, sortOrder: i + 1 },
+    });
+  }
+  for (const [i, name] of [
+    "Administration",
+    "Academics",
+    "Accounts",
+    "Library",
+    "Transport",
+    "Support",
+  ].entries()) {
+    await prisma.department.upsert({
+      where: { name },
+      update: {},
+      create: { name, sortOrder: i + 1 },
+    });
+  }
 }
 
 main()

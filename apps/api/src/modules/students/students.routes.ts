@@ -16,6 +16,7 @@ import {
   passedOutQuerySchema,
   updateStudentSchema,
 } from "./students.schema";
+import { enrollmentScopeWhere, scopeFor } from "../staff/scope";
 
 export const studentsRouter = Router();
 
@@ -65,6 +66,20 @@ studentsRouter.get(
         ],
       }),
     };
+
+    // A teacher sees only students in the sections they are class teacher of or teach.
+    const scope = await scopeFor(req.user!, sessionId ?? "");
+    if (scope)
+      where.AND = [
+        {
+          enrollments: {
+            some: {
+              ...(sessionId && { sessionId }),
+              ...enrollmentScopeWhere(scope),
+            },
+          },
+        },
+      ];
 
     const orderBy: Prisma.StudentOrderByWithRelationInput =
       qy.sortBy === "fullName"
@@ -193,6 +208,23 @@ studentsRouter.get(
   authorize("students", "VIEW"),
   validate(idParam, "params"),
   h(async (req, res) => {
+    const active = await prisma.academicSession.findFirst({
+      where: { isActive: true },
+      select: { id: true },
+    });
+    const scope = await scopeFor(req.user!, active?.id ?? "");
+    if (
+      scope &&
+      (await prisma.enrollment.count({
+        where: {
+          studentId: req.params.id,
+          ...(active && { sessionId: active.id }),
+          ...enrollmentScopeWhere(scope),
+        },
+      })) === 0
+    ) {
+      throw ApiError.forbidden("This student is not in a class you teach");
+    }
     const student = await prisma.student.findUnique({
       where: { id: req.params.id },
       include: {

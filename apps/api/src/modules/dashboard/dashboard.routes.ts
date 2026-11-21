@@ -212,6 +212,7 @@ dashboardRouter.get(
       pendingRefunds,
       pendingDiscounts,
       pendingLeaves,
+      pendingStaffLeave,
     ] = await Promise.all([
       can("students")
         ? studentsSection(session?.id, monthStart, months, range, today)
@@ -227,7 +228,14 @@ dashboardRouter.get(
         ? prisma.feeDiscount.count({ where: { status: "PENDING" } })
         : 0,
       can("leaves", "APPROVE")
-        ? prisma.leaveApplication.count({ where: { status: "PENDING" } })
+        ? prisma.leaveApplication.count({
+            where: { applicantType: "STUDENT", status: "PENDING" },
+          })
+        : 0,
+      can("leaves", "APPROVE") && can("staff")
+        ? prisma.leaveApplication.count({
+            where: { applicantType: "EMPLOYEE", status: "PENDING" },
+          })
         : 0,
     ]);
 
@@ -289,6 +297,12 @@ dashboardRouter.get(
           label: "Leave applications waiting for a decision",
           count: pendingLeaves,
           to: "/attendance/leaves",
+        },
+        {
+          key: "staff-leaves",
+          label: "Staff leave waiting for a decision",
+          count: pendingStaffLeave,
+          to: "/staff/leaves",
         },
       ].filter((a) => a.count > 0),
     });

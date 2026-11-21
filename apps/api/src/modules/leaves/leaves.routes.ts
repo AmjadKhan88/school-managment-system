@@ -25,6 +25,21 @@ import {
 
 export const leavesRouter = Router();
 
+// Student leave only. Staff leave records are handled under /staff-leaves and must not be reachable here.
+leavesRouter.param("id", async (_req, _res, next, id) => {
+  try {
+    const r = await prisma.leaveApplication.findUnique({
+      where: { id },
+      select: { applicantType: true },
+    });
+    if (r && r.applicantType !== "STUDENT")
+      return next(ApiError.notFound("Leave application not found"));
+    next();
+  } catch (e) {
+    next(e);
+  }
+});
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_BYTES, files: 1 },

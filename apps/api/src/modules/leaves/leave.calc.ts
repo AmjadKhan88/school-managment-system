@@ -9,7 +9,10 @@ export const overlaps = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) =>
 export const LEAVE_TYPE_LABEL: Record<string, string> = {
   SICK: "Sick leave",
   CASUAL: "Casual leave",
+  ANNUAL: "Annual leave",
   EMERGENCY: "Emergency",
   FAMILY: "Family event",
+  MATERNITY: "Maternity leave",
+  UNPAID: "Unpaid leave",
   OTHER: "Other",
 };

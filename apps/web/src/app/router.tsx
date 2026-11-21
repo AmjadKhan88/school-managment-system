@@ -59,6 +59,8 @@ import {
   TeacherAssignmentPage,
 } from "@/features/staff/AssignmentPages";
 import PasswordPage from "@/pages/PasswordPage";
+import StaffAttendancePage from "@/features/staff/StaffAttendancePage";
+import StaffLeavesPage from "@/features/staff/StaffLeavesPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -115,6 +117,10 @@ const implemented = new Set([
   "/academics/class-teachers",
   "/academics/teacher-assignments",
   "/account/password",
+  "/attendance/teachers",
+  "/attendance/staff",
+  "/staff/attendance",
+  "/staff/leaves",
 ]);
 
 export const router = createBrowserRouter([
@@ -223,6 +229,19 @@ export const router = createBrowserRouter([
             element: <TeacherAssignmentPage />,
           },
           { path: "account/password", element: <PasswordPage /> },
+          {
+            path: "attendance/teachers",
+            element: <StaffAttendancePage key="teachers" group="teachers" />,
+          },
+          {
+            path: "attendance/staff",
+            element: <StaffAttendancePage key="staff" group="staff" />,
+          },
+          {
+            path: "staff/attendance",
+            element: <StaffAttendancePage key="staff2" group="staff" />,
+          },
+          { path: "staff/leaves", element: <StaffLeavesPage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),

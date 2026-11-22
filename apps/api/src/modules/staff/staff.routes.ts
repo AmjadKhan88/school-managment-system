@@ -316,7 +316,11 @@ staffRouter.get(
           employeeId: e.id,
           ...(canPayroll
             ? {}
-            : { field: { notIn: ["Basic salary", "Bank details"] } }),
+            : {
+                field: {
+                  notIn: ["Basic salary", "Bank details", "Salary structure"],
+                },
+              }),
         },
         orderBy: { changedAt: "desc" },
         take: 100,

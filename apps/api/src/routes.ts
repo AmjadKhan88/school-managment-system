@@ -20,6 +20,9 @@ import { reportCardsRouter } from "./modules/exams/reportcards.routes";
 import { staffRouter } from "./modules/staff/staff.routes";
 import { staffAttendanceRouter } from "./modules/staff/staffattendance.routes";
 import { staffLeavesRouter } from "./modules/staff/staffleaves.routes";
+import { payrollRouter } from "./modules/payroll/payroll.routes";
+import { loansRouter } from "./modules/payroll/loans.routes";
+import { payrollReportsRouter } from "./modules/payroll/payroll.reports";
 
 export const apiRouter = Router();
 apiRouter.use("/health", healthRouter);
@@ -44,5 +47,8 @@ apiRouter.use("/report-cards", authenticate, reportCardsRouter);
 apiRouter.use("/staff", authenticate, staffRouter);
 apiRouter.use("/staff-attendance", authenticate, staffAttendanceRouter);
 apiRouter.use("/staff-leaves", authenticate, staffLeavesRouter);
+apiRouter.use("/payroll", authenticate, payrollRouter);
+apiRouter.use("/staff-loans", authenticate, loansRouter);
+apiRouter.use("/payroll-reports", authenticate, payrollReportsRouter);
 // Later phases: register each new module here, e.g.
 // apiRouter.use('/students', authenticate, studentsRouter);

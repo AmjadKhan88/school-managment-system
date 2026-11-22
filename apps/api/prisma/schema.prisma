@@ -1445,6 +1445,10 @@ model Employee {
   teaching          TeacherAssignment[]
   attendance        StaffAttendance[]
   leaveApplications LeaveApplication[]
+  salaryItems       EmployeeSalaryItem[]
+  payrolls          Payroll[]
+  salaryPayments    SalaryPayment[]
+  loans             StaffLoan[]
 
   @@index([status])
   @@index([isTeacher])
@@ -1530,4 +1534,213 @@ model StaffAttendance {
   @@unique([employeeId, date]) // one record per employee per day
   @@index([date])
   @@map("staff_attendance")
+}
+
+// ---------------- PHASE 5C: payroll ----------------
+
+enum SalaryComponentType {
+  ALLOWANCE
+  DEDUCTION
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+}
+
+enum PayrollItemKind {
+  BASIC
+  ALLOWANCE
+  BONUS
+  OVERTIME
+  DEDUCTION
+  LOAN
+  ABSENCE
+}
+
+enum SalaryPayMethod {
+  CASH
+  BANK_TRANSFER
+  JAZZCASH
+  EASYPAISA
+  CHEQUE
+  OTHER
+}
+
+enum LoanType {
+  ADVANCE
+  LOAN
+}
+
+enum LoanStatus {
+  PENDING
+  ACTIVE
+  SETTLED
+  REJECTED
+  CANCELLED
+}
+
+// An allowance or deduction type. isPercent means the employee's value is a percentage of basic salary.
+model SalaryComponent {
+  id        String              @id @default(cuid())
+  name      String              @unique
+  type      SalaryComponentType
+  isPercent Boolean             @default(false)
+  sortOrder Int                 @default(0)
+  isActive  Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  employeeItems EmployeeSalaryItem[]
+
+  @@map("salary_components")
+}
+
+model EmployeeSalaryItem {
+  id          String   @id @default(cuid())
+  employeeId  String
+  componentId String
+  value       Decimal  @db.Decimal(14, 2) // amount, or percent of basic
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employee  Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  component SalaryComponent @relation(fields: [componentId], references: [id], onDelete: Restrict)
+
+  @@unique([employeeId, componentId])
+  @@map("salary_structures")
+}
+
+// One payroll per employee per month. Drafts are editable. Approved payroll is locked.
+model Payroll {
+  id                  String        @id @default(cuid())
+  slipNo              String        @unique
+  period              String // "2026-11"
+  employeeId          String
+  status              PayrollStatus @default(DRAFT)
+  basicSalary         Decimal       @db.Decimal(14, 2)
+  allowancesTotal     Decimal       @default(0) @db.Decimal(14, 2)
+  bonus               Decimal       @default(0) @db.Decimal(14, 2)
+  bonusNote           String?
+  overtimeHours       Decimal       @default(0) @db.Decimal(6, 2)
+  overtimeRate        Decimal       @default(0) @db.Decimal(10, 2)
+  overtimeAmount      Decimal       @default(0) @db.Decimal(14, 2)
+  deductionsTotal     Decimal       @default(0) @db.Decimal(14, 2)
+  loanRecovery        Decimal       @default(0) @db.Decimal(14, 2)
+  absenceDeduction    Decimal       @default(0) @db.Decimal(14, 2)
+  netSalary           Decimal       @db.Decimal(14, 2)
+  paidAmount          Decimal       @default(0) @db.Decimal(14, 2)
+  presentDays         Int           @default(0)
+  halfDays            Int           @default(0)
+  absentDays          Int           @default(0)
+  paidLeaveDays       Int           @default(0)
+  unpaidLeaveDays     Int           @default(0)
+  uncoveredLeaveDays  Int           @default(0)
+  outsideDays         Int           @default(0)
+  recordedDays        Int           @default(0)
+  computedAbsenceDays Decimal       @default(0) @db.Decimal(5, 2)
+  absenceDays         Decimal       @default(0) @db.Decimal(5, 2)
+  absenceOverridden   Boolean       @default(false)
+  absenceNote         String?
+  generatedById       String?
+  approvedById        String?
+  approvedAt          DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  employee   Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  items      PayrollItem[]
+  payments   SalaryPayment[]
+  recoveries LoanRecovery[]
+
+  @@unique([employeeId, period]) // no duplicate payroll for the same employee and month
+  @@index([period, status])
+  @@map("payrolls")
+}
+
+model PayrollItem {
+  id        String          @id @default(cuid())
+  payrollId String
+  kind      PayrollItemKind
+  label     String
+  amount    Decimal         @db.Decimal(14, 2)
+  loanId    String?
+  sortOrder Int             @default(0)
+
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+
+  @@index([payrollId])
+  @@map("payroll_items")
+}
+
+// Never deleted. A mistaken payment is reversed with a reason.
+model SalaryPayment {
+  id            String          @id @default(cuid())
+  receiptNo     String          @unique
+  payrollId     String
+  employeeId    String
+  amount        Decimal         @db.Decimal(14, 2)
+  paidOn        DateTime        @db.Date
+  method        SalaryPayMethod
+  reference     String?
+  note          String?
+  paidById      String?
+  reversedAt    DateTime?
+  reversedById  String?
+  reverseReason String?
+  createdAt     DateTime        @default(now())
+
+  payroll  Payroll  @relation(fields: [payrollId], references: [id], onDelete: Restrict)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@index([paidOn])
+  @@index([payrollId])
+  @@map("salary_payments")
+}
+
+model StaffLoan {
+  id               String           @id @default(cuid())
+  loanNo           String           @unique
+  employeeId       String
+  type             LoanType
+  amount           Decimal          @db.Decimal(14, 2)
+  instalments      Int
+  instalmentAmount Decimal          @db.Decimal(14, 2)
+  startPeriod      String // first month to recover, "2026-12"
+  reason           String?
+  status           LoanStatus       @default(PENDING)
+  requestedById    String?
+  decidedById      String?
+  decidedAt        DateTime?
+  rejectionReason  String?
+  cancelReason     String?
+  issuedOn         DateTime?        @db.Date
+  issueMethod      SalaryPayMethod?
+  issueReference   String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  employee   Employee       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  recoveries LoanRecovery[]
+
+  @@index([employeeId, status])
+  @@map("staff_loans")
+}
+
+// A repayment taken from a payroll. Voided (never deleted) if that payroll is reopened.
+model LoanRecovery {
+  id        String    @id @default(cuid())
+  loanId    String
+  payrollId String
+  period    String
+  amount    Decimal   @db.Decimal(14, 2)
+  voidedAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  loan    StaffLoan @relation(fields: [loanId], references: [id], onDelete: Restrict)
+  payroll Payroll   @relation(fields: [payrollId], references: [id], onDelete: Restrict)
+
+  @@unique([loanId, payrollId])
+  @@index([period])
+  @@map("loan_recoveries")
 }

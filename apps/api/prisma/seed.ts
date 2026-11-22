@@ -203,6 +203,22 @@ async function seedGradingScale() {
       create: { name, sortOrder: i + 1 },
     });
   }
+
+  // 2f. Starter salary components (editable in the app)
+  const components: [string, "ALLOWANCE" | "DEDUCTION", boolean][] = [
+    ["House Rent", "ALLOWANCE", true],
+    ["Medical Allowance", "ALLOWANCE", false],
+    ["Transport Allowance", "ALLOWANCE", false],
+    ["Provident Fund", "DEDUCTION", true],
+    ["Income Tax", "DEDUCTION", false],
+  ];
+  for (const [i, [name, type, isPercent]] of components.entries()) {
+    await prisma.salaryComponent.upsert({
+      where: { name },
+      update: {},
+      create: { name, type, isPercent, sortOrder: i + 1 },
+    });
+  }
 }
 
 main()

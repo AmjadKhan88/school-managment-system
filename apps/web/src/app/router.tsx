@@ -61,6 +61,14 @@ import {
 import PasswordPage from "@/pages/PasswordPage";
 import StaffAttendancePage from "@/features/staff/StaffAttendancePage";
 import StaffLeavesPage from "@/features/staff/StaffLeavesPage";
+import SalaryStructurePage from "@/features/payroll/SalaryStructurePage";
+import SalaryManagementPage from "@/features/payroll/SalaryManagementPage";
+import MonthlyPayrollPage from "@/features/payroll/MonthlyPayrollPage";
+import SalaryPaymentsPage from "@/features/payroll/SalaryPaymentsPage";
+import SalarySlipsPage from "@/features/payroll/SalarySlipsPage";
+import SalarySlipPrintPage from "@/features/payroll/SalarySlipPrintPage";
+import LoansPage from "@/features/payroll/LoansPage";
+import PayrollReportsPage from "@/features/payroll/PayrollReportsPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -121,6 +129,14 @@ const implemented = new Set([
   "/attendance/staff",
   "/staff/attendance",
   "/staff/leaves",
+  "/staff/salary-structure",
+  "/staff/salary-management",
+  "/staff/payroll",
+  "/staff/salary-payments",
+  "/staff/salary-slips",
+  "/staff/advances",
+  "/staff/loans",
+  "/staff/payroll-reports",
 ]);
 
 export const router = createBrowserRouter([
@@ -242,6 +258,23 @@ export const router = createBrowserRouter([
             element: <StaffAttendancePage key="staff2" group="staff" />,
           },
           { path: "staff/leaves", element: <StaffLeavesPage /> },
+          { path: "staff/salary-structure", element: <SalaryStructurePage /> },
+          {
+            path: "staff/salary-management",
+            element: <SalaryManagementPage />,
+          },
+          { path: "staff/payroll", element: <MonthlyPayrollPage /> },
+          { path: "staff/salary-payments", element: <SalaryPaymentsPage /> },
+          { path: "staff/salary-slips", element: <SalarySlipsPage /> },
+          {
+            path: "staff/advances",
+            element: <LoansPage key="advance" type="ADVANCE" />,
+          },
+          {
+            path: "staff/loans",
+            element: <LoansPage key="loan" type="LOAN" />,
+          },
+          { path: "staff/payroll-reports", element: <PayrollReportsPage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),
@@ -250,6 +283,7 @@ export const router = createBrowserRouter([
         ],
       },
       { path: "print/report-cards", element: <ReportCardPrintPage /> },
+      { path: "print/salary-slips", element: <SalarySlipPrintPage /> },
     ],
   },
 ]);

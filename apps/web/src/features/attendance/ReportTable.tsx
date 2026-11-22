@@ -4,7 +4,7 @@ import { LETTER_STYLE } from "./shared";
 export interface ReportCol {
   key: string;
   header: string;
-  kind?: "status" | "percent";
+  kind?: "status" | "percent" | "money";
 }
 export interface ReportData {
   title: string;
@@ -21,6 +21,15 @@ function Cell({
   value: string | number | null;
 }) {
   if (value === null || value === "") return null;
+  if (col.kind === "money")
+    return (
+      <>
+        {Number(value).toLocaleString("en-PK", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}
+      </>
+    );
   if (col.kind === "status")
     return (
       <span

@@ -191,6 +191,9 @@ model AcademicSession {
   exams                   Exam[]
   classTeacherAssignments ClassTeacherAssignment[]
   teacherAssignments      TeacherAssignment[]
+  timetablePeriods        TimetablePeriod[]
+  timetableEntries        TimetableEntry[]
+  timetableConfig         TimetableConfig?
 
   @@unique([schoolId, name])
   @@index([schoolId, isActive])
@@ -252,6 +255,7 @@ model Class {
   examResults             ExamResult[]
   classTeacherAssignments ClassTeacherAssignment[]
   teacherAssignments      TeacherAssignment[]
+  timetableEntries        TimetableEntry[]
 
   @@map("classes")
 }
@@ -271,6 +275,7 @@ model Section {
   attendance              StudentAttendance[]
   classTeacherAssignments ClassTeacherAssignment[]
   teacherAssignments      TeacherAssignment[]
+  timetableEntries        TimetableEntry[]
 
   @@unique([classId, name])
   @@map("sections")
@@ -287,6 +292,7 @@ model Subject {
   classes            ClassSubject[]
   examSubjects       ExamSubject[]
   teacherAssignments TeacherAssignment[]
+  timetableEntries   TimetableEntry[]
 
   @@map("subjects")
 }
@@ -1451,6 +1457,7 @@ model Employee {
   payrolls          Payroll[]
   salaryPayments    SalaryPayment[]
   loans             StaffLoan[]
+  timetableEntries  TimetableEntry[]
 
   @@index([status])
   @@index([isTeacher])
@@ -1749,4 +1756,80 @@ model LoanRecovery {
   @@unique([loanId, payrollId])
   @@index([period])
   @@map("loan_recoveries")
+}
+
+// ---------------- PHASE 4F: timetable ----------------
+
+model TimetableConfig {
+  id          String   @id @default(cuid())
+  sessionId   String   @unique
+  workingDays Int[] // ISO weekdays: 1 = Monday ... 7 = Sunday
+  updatedAt   DateTime @updatedAt
+
+  session AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+
+  @@map("timetable_config")
+}
+
+model Room {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  capacity  Int?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entries TimetableEntry[]
+
+  @@map("rooms")
+}
+
+// The bell schedule of a session. Break periods hold no classes.
+model TimetablePeriod {
+  id        String   @id @default(cuid())
+  sessionId String
+  sortOrder Int
+  name      String
+  startTime String // "08:00"
+  endTime   String
+  isBreak   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session AcademicSession  @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  entries TimetableEntry[]
+
+  @@unique([sessionId, sortOrder])
+  @@map("timetable_periods")
+}
+
+// One subject for one section in one period on one weekday.
+// The three unique rules also hold in the database: a section, a teacher and a room can each be in one place per period.
+model TimetableEntry {
+  id         String   @id @default(cuid())
+  sessionId  String
+  classId    String
+  sectionId  String
+  dayOfWeek  Int // 1 = Monday ... 7 = Sunday
+  periodId   String
+  subjectId  String
+  employeeId String?
+  roomId     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  session  AcademicSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  class    Class           @relation(fields: [classId], references: [id], onDelete: Restrict)
+  section  Section         @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  period   TimetablePeriod @relation(fields: [periodId], references: [id], onDelete: Restrict)
+  subject  Subject         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  employee Employee?       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  room     Room?           @relation(fields: [roomId], references: [id], onDelete: Restrict)
+
+  @@unique([sessionId, sectionId, dayOfWeek, periodId])
+  @@unique([sessionId, employeeId, dayOfWeek, periodId])
+  @@unique([sessionId, roomId, dayOfWeek, periodId])
+  @@index([sectionId])
+  @@index([employeeId])
+  @@map("timetable_entries")
 }

@@ -80,6 +80,7 @@ export const DEFAULT_ROLES: {
       exams: [...READ, "APPROVE"],
       results: [...READ, "APPROVE"],
       attendance: READ,
+      timetable: READ,
       fees: READ,
       finance: READ,
       reports: READ,

@@ -1012,8 +1012,10 @@ model Expense {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  category    ExpenseCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  attachments ExpenseAttachment[]
+  category        ExpenseCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  attachments     ExpenseAttachment[]
+  salaryPayment   SalaryPayment?
+  staffLoanPayout StaffLoan?
 
   @@index([expenseDate])
   @@index([status])
@@ -1688,10 +1690,12 @@ model SalaryPayment {
   reversedAt    DateTime?
   reversedById  String?
   reverseReason String?
+  expenseId     String?         @unique
   createdAt     DateTime        @default(now())
 
   payroll  Payroll  @relation(fields: [payrollId], references: [id], onDelete: Restrict)
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  expense  Expense? @relation(fields: [expenseId], references: [id], onDelete: Restrict)
 
   @@index([paidOn])
   @@index([payrollId])
@@ -1717,11 +1721,13 @@ model StaffLoan {
   issuedOn         DateTime?        @db.Date
   issueMethod      SalaryPayMethod?
   issueReference   String?
+  payoutExpenseId  String?          @unique
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  employee   Employee       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  recoveries LoanRecovery[]
+  employee      Employee       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  payoutExpense Expense?       @relation(fields: [payoutExpenseId], references: [id], onDelete: Restrict)
+  recoveries    LoanRecovery[]
 
   @@index([employeeId, status])
   @@map("staff_loans")

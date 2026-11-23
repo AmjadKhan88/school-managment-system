@@ -18,6 +18,8 @@ import {
   LoanInput,
   reasonSchema,
 } from "./payroll.schema";
+import { LOAN_CATEGORY, postExpense, voidExpense } from "./finance.post";
+import { loanExpenseText } from "./posting.calc";
 
 export const loansRouter = Router();
 const D = (n: Prisma.Decimal.Value) => new Prisma.Decimal(n);
@@ -223,33 +225,59 @@ loansRouter.post(
   }),
 );
 
-// Approving records when and how the money was paid out, and makes the loan active.
+// Approving records when and how the money was paid out. That payout is booked as an expense in the same transaction.
 loansRouter.post(
   "/:id/approve",
   authorize("payroll", "APPROVE"),
   validate(idParam, "params"),
   validate(loanApproveSchema),
   h(async (req, res) => {
-    const r = await prisma.staffLoan.updateMany({
-      where: { id: req.params.id, status: "PENDING" },
-      data: {
-        status: "ACTIVE",
-        decidedById: req.user!.id,
-        decidedAt: new Date(),
-        issuedOn: req.body.issuedOn,
-        issueMethod: req.body.method,
-        issueReference: req.body.reference,
-      },
+    const expense = await prisma.$transaction(async (tx) => {
+      const l = await tx.staffLoan.findUnique({
+        where: { id: req.params.id },
+        include: { employee: { select: { fullName: true } } },
+      });
+      if (!l) throw ApiError.notFound("Loan not found");
+      const r = await tx.staffLoan.updateMany({
+        where: { id: l.id, status: "PENDING" },
+        data: {
+          status: "ACTIVE",
+          decidedById: req.user!.id,
+          decidedAt: new Date(),
+          issuedOn: req.body.issuedOn,
+          issueMethod: req.body.method,
+          issueReference: req.body.reference,
+        },
+      });
+      if (r.count === 0)
+        throw ApiError.conflict("This request is no longer pending");
+      const exp = await postExpense(tx, {
+        category: LOAN_CATEGORY,
+        description: loanExpenseText(l.type, l.loanNo),
+        amount: l.amount,
+        date: req.body.issuedOn,
+        method: req.body.method,
+        paidTo: l.employee.fullName,
+        reference: req.body.reference ?? l.loanNo,
+        byUserId: req.user!.id,
+      });
+      await tx.staffLoan.update({
+        where: { id: l.id },
+        data: { payoutExpenseId: exp.id },
+      });
+      return exp;
     });
-    if (r.count === 0)
-      throw ApiError.conflict("This request is no longer pending");
     await writeAudit(req, {
       action: "STAFF_LOAN_APPROVED",
       entity: "staff_loans",
       entityId: req.params.id,
-      newValues: { issuedOn: req.body.issuedOn, method: req.body.method },
+      newValues: {
+        issuedOn: req.body.issuedOn,
+        method: req.body.method,
+        expenseNo: expense.expenseNo,
+      },
     });
-    ok(res, { id: req.params.id });
+    ok(res, { id: req.params.id, expenseNo: expense.expenseNo });
   }),
 );
 
@@ -280,7 +308,7 @@ loansRouter.post(
   }),
 );
 
-// Pending: whoever requested it or an approver. Active with nothing recovered yet: an approver only.
+// Pending: whoever requested it or an approver. Active with nothing recovered yet: an approver only, and the payout is voided in the books.
 loansRouter.post(
   "/:id/cancel",
   authorize("payroll", "CREATE"),
@@ -310,9 +338,17 @@ loansRouter.post(
     } else
       throw ApiError.conflict(`This loan is already ${l.status.toLowerCase()}`);
 
-    await prisma.staffLoan.update({
-      where: { id: l.id },
-      data: { status: "CANCELLED", cancelReason: req.body.reason },
+    await prisma.$transaction(async (tx) => {
+      await tx.staffLoan.update({
+        where: { id: l.id },
+        data: { status: "CANCELLED", cancelReason: req.body.reason },
+      });
+      if (l.payoutExpenseId)
+        await voidExpense(
+          tx,
+          l.payoutExpenseId,
+          `${l.loanNo} cancelled: ${req.body.reason}`,
+        );
     });
     await writeAudit(req, {
       action: "STAFF_LOAN_CANCELLED",

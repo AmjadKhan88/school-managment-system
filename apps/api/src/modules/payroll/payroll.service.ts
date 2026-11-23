@@ -12,6 +12,8 @@ import {
   summariseAttendance,
 } from "./payroll.calc";
 import type { DraftEdit, PaymentInput } from "./payroll.schema";
+import { postExpense, SALARY_CATEGORY, voidExpense } from "./finance.post";
+import { salaryExpenseText } from "./posting.calc";
 
 type Dec = Prisma.Decimal;
 const D = (n: Prisma.Decimal.Value) => new Prisma.Decimal(n);
@@ -445,7 +447,10 @@ const lock = (tx: Prisma.TransactionClient, id: string) =>
 export async function recordPayment(input: PaymentInput, userId: string) {
   return prisma.$transaction(async (tx) => {
     await lock(tx, input.payrollId);
-    const p = await tx.payroll.findUnique({ where: { id: input.payrollId } });
+    const p = await tx.payroll.findUnique({
+      where: { id: input.payrollId },
+      include: { employee: { select: { fullName: true } } },
+    });
     if (!p) throw ApiError.notFound("Payroll not found");
     if (p.status !== "APPROVED")
       throw ApiError.conflict("Only approved payroll can be paid");
@@ -456,9 +461,21 @@ export async function recordPayment(input: PaymentInput, userId: string) {
         `The amount is more than the balance of ${balance.toFixed(2)}`,
       );
 
+    const receiptNo = await nextNo(tx, "SPY", input.paidOn);
+    // The payment and its entry in the books are written together, so one can never exist without the other.
+    const expense = await postExpense(tx, {
+      category: SALARY_CATEGORY,
+      description: salaryExpenseText(p.period, p.slipNo, receiptNo),
+      amount,
+      date: input.paidOn,
+      method: input.method,
+      paidTo: p.employee.fullName,
+      reference: input.reference ?? receiptNo,
+      byUserId: userId,
+    });
     const pay = await tx.salaryPayment.create({
       data: {
-        receiptNo: await nextNo(tx, "SPY", input.paidOn),
+        receiptNo,
         payrollId: p.id,
         employeeId: p.employeeId,
         amount,
@@ -467,6 +484,7 @@ export async function recordPayment(input: PaymentInput, userId: string) {
         reference: input.reference,
         note: input.note,
         paidById: userId,
+        expenseId: expense.id,
       },
       select: { id: true, receiptNo: true },
     });
@@ -474,7 +492,11 @@ export async function recordPayment(input: PaymentInput, userId: string) {
       where: { id: p.id },
       data: { paidAmount: { increment: amount } },
     });
-    return { ...pay, balance: balance.minus(amount).toFixed(2) };
+    return {
+      ...pay,
+      expenseNo: expense.expenseNo,
+      balance: balance.minus(amount).toFixed(2),
+    };
   }, OPTS);
 }
 
@@ -506,6 +528,13 @@ export async function reversePayment(
       where: { id: pay.payrollId },
       data: { paidAmount: { decrement: pay.amount } },
     });
+    // The entry leaves the cash book and every report, with the same reason on record.
+    if (pay.expenseId)
+      await voidExpense(
+        tx,
+        pay.expenseId,
+        `Salary payment ${pay.receiptNo} reversed: ${reason}`,
+      );
     return { id, receiptNo: pay.receiptNo };
   }, OPTS);
 }

@@ -37,6 +37,7 @@ import {
   reversePayment,
   slips,
 } from "./payroll.service";
+import { backfillPosting, financeStatus } from "./finance.post";
 
 export const payrollRouter = Router();
 const D = (n: Prisma.Decimal.Value) => new Prisma.Decimal(n);
@@ -628,6 +629,27 @@ payrollRouter.post(
       entity: "salary_payments",
       entityId: req.params.id,
       newValues: { receiptNo: r.receiptNo, reason: req.body.reason },
+    });
+    ok(res, r);
+  }),
+);
+
+// =========================== Finance posting ===========================
+payrollRouter.get(
+  "/finance-status",
+  authorize("payroll", "APPROVE"),
+  h(async (_req, res) => ok(res, await financeStatus())),
+);
+
+payrollRouter.post(
+  "/finance-backfill",
+  authorize("payroll", "APPROVE"),
+  h(async (req, res) => {
+    const r = await backfillPosting(req.user!.id);
+    await writeAudit(req, {
+      action: "PAYROLL_POSTED_TO_FINANCE",
+      entity: "expenses",
+      newValues: r,
     });
     ok(res, r);
   }),

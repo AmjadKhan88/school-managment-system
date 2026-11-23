@@ -451,6 +451,24 @@ expensesRouter.post(
     if (!e) throw ApiError.notFound("Expense not found");
     if (e.status !== "APPROVED")
       throw ApiError.conflict("Only approved expenses can be voided");
+
+    // Entries created by payroll are changed only from payroll, so the two can never disagree.
+    const system = await prisma.expense.findUnique({
+      where: { id: e.id },
+      select: {
+        salaryPayment: { select: { receiptNo: true } },
+        staffLoanPayout: { select: { loanNo: true } },
+      },
+    });
+    if (system?.salaryPayment)
+      throw ApiError.conflict(
+        `This expense is salary payment ${system.salaryPayment.receiptNo}. Reverse the payment under Salary Payments instead.`,
+      );
+    if (system?.staffLoanPayout)
+      throw ApiError.conflict(
+        `This expense is the payout of ${system.staffLoanPayout.loanNo}. Cancel it under Advance Salary or Loan and Deductions instead.`,
+      );
+
     await prisma.expense.update({
       where: { id: e.id },
       data: {

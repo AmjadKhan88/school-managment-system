@@ -69,6 +69,8 @@ import SalarySlipsPage from "@/features/payroll/SalarySlipsPage";
 import SalarySlipPrintPage from "@/features/payroll/SalarySlipPrintPage";
 import LoansPage from "@/features/payroll/LoansPage";
 import PayrollReportsPage from "@/features/payroll/PayrollReportsPage";
+import TimetablePage from "@/features/timetable/TimetablePage";
+import TimetablePrintPage from "@/features/timetable/TimetablePrintPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -137,6 +139,7 @@ const implemented = new Set([
   "/staff/advances",
   "/staff/loans",
   "/staff/payroll-reports",
+  "/academics/timetable",
 ]);
 
 export const router = createBrowserRouter([
@@ -275,6 +278,7 @@ export const router = createBrowserRouter([
             element: <LoansPage key="loan" type="LOAN" />,
           },
           { path: "staff/payroll-reports", element: <PayrollReportsPage /> },
+          { path: "academics/timetable", element: <TimetablePage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),
@@ -284,6 +288,7 @@ export const router = createBrowserRouter([
       },
       { path: "print/report-cards", element: <ReportCardPrintPage /> },
       { path: "print/salary-slips", element: <SalarySlipPrintPage /> },
+      { path: "print/timetable", element: <TimetablePrintPage /> },
     ],
   },
 ]);

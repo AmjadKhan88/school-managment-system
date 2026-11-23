@@ -23,6 +23,7 @@ import {
   ExamRow,
   toIso,
 } from "./shared";
+import { useRooms } from "@/features/timetable/shared";
 
 interface Paper {
   subjectId: string;
@@ -82,6 +83,7 @@ const conflictsOf = (e: unknown): string[] =>
 export default function ExamSchedulePage() {
   const qc = useQueryClient();
   const can = useAuth((s) => s.can);
+  const rooms = useRooms();
   const [params, setParams] = useSearchParams();
   const [examId, setExamId] = useState(params.get("examId") ?? "");
   const [classId, setClassId] = useState("");
@@ -333,7 +335,13 @@ export default function ExamSchedulePage() {
               Class-Subject Mapping, then press <strong>Sync subjects</strong>.
             </div>
           )}
-
+          <datalist id="room-list">
+            {rooms.data
+              ?.filter((r) => r.isActive)
+              .map((r) => (
+                <option key={r.id} value={r.name} />
+              ))}
+          </datalist>
           {!!papers.data?.length && (
             <form onSubmit={submit}>
               <fieldset disabled={!canEdit} className="card overflow-x-auto">
@@ -415,6 +423,7 @@ export default function ExamSchedulePage() {
                               className="input w-24 py-1.5"
                               placeholder="Room"
                               value={r.room}
+                              list="room-list"
                               onChange={(e) =>
                                 setRow(p.subjectId, { room: e.target.value })
                               }

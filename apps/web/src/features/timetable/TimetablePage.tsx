@@ -1195,11 +1195,14 @@ function PeriodDialog({
     endTime: period?.endTime ?? "",
     isBreak: period?.isBreak ?? false,
   });
-  const save = useMutation({
-    mutationFn: () =>
-      period
-        ? api.put(`/timetable/periods/${period.id}`, f)
-        : api.post("/timetable/periods", { sessionId, ...f }),
+  const save = useMutation<unknown, unknown, void>({
+    mutationFn: async () => {
+      if (period) {
+        await api.put(`/timetable/periods/${period.id}`, f);
+      } else {
+        await api.post("/timetable/periods", { sessionId, ...f });
+      }
+    },
     onSuccess: () => {
       toast.success(period ? "Period updated" : "Period added");
       onSaved();

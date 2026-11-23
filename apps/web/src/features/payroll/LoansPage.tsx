@@ -728,6 +728,11 @@ function LoanDetail({
                     />
                   </Field>
                 </div>
+                <p className="mt-3 text-xs text-slate-500">
+                  The payout is recorded in the Cash Book as an expense (Staff
+                  advances and loans). Later instalments reduce salary, so they
+                  are not booked again.
+                </p>
                 <div className="mt-3 flex justify-end gap-2">
                   <button
                     className="btn border border-slate-300"
@@ -781,7 +786,12 @@ function LoanDetail({
                     <button
                       className="btn border border-slate-300"
                       onClick={() =>
-                        ask("cancel", "Why is this being cancelled?")
+                        ask(
+                          "cancel",
+                          l.status === "ACTIVE"
+                            ? "Why is this being cancelled? The payout will be voided in the Cash Book, so do this only if it was entered by mistake."
+                            : "Why is this being cancelled?",
+                        )
                       }
                     >
                       Cancel

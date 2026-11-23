@@ -50,6 +50,7 @@ export default function SalaryPaymentsPage() {
         title="Salary Payments"
         subtitle="Record salary paid to employees. Payments are never deleted. A mistake is reversed with a reason."
       />
+      <FinanceBanner />
       <div className="mb-4 flex gap-1 border-b border-line">
         {(
           [
@@ -332,6 +333,11 @@ function PayDialog({
             />
           </Field>
         </div>
+        <p className="mt-3 text-xs text-slate-500">
+          This payment is recorded in the Cash Book as a Salaries expense on the
+          payment date, in the{" "}
+          {f.method === "CASH" ? "cash" : "bank and wallets"} view.
+        </p>
         <div className="mt-6 flex justify-end gap-2">
           <button
             type="button"
@@ -564,5 +570,68 @@ function History() {
         )}
       </div>
     </>
+  );
+}
+
+interface FinanceStatus {
+  unposted: { payments: number; loans: number; amount: string };
+  inconsistencies: number;
+}
+
+function FinanceBanner() {
+  const qc = useQueryClient();
+  const can = useAuth((s) => s.can);
+  const q = useQuery({
+    queryKey: ["payroll", "finance-status"],
+    enabled: can("payroll", "APPROVE"),
+    queryFn: async () =>
+      (await api.get<{ data: FinanceStatus }>("/payroll/finance-status")).data
+        .data,
+  });
+  const post = useMutation({
+    mutationFn: () =>
+      api.post<{ data: { payments: number; loans: number; skipped: number } }>(
+        "/payroll/finance-backfill",
+      ),
+    onSuccess: (r) => {
+      toast.success(
+        `Posted ${r.data.data.payments} payment(s) and ${r.data.data.loans} loan payout(s) to the books`,
+      );
+      qc.invalidateQueries();
+    },
+    onError: (e) => toast.error(apiMessage(e)),
+  });
+  const s = q.data;
+  if (!s) return null;
+  const n = s.unposted.payments + s.unposted.loans;
+  if (n === 0 && s.inconsistencies === 0) return null;
+  return (
+    <div className="mb-4 space-y-2">
+      {n > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <span>
+            {s.unposted.payments} salary payment(s) and {s.unposted.loans} loan
+            payout(s), {money(s.unposted.amount)} in total, were recorded before
+            posting existed and are not in the Cash Book yet. They will be dated
+            on their original payment dates.
+          </span>
+          <button
+            className="btn-primary"
+            disabled={post.isPending}
+            onClick={() => post.mutate()}
+          >
+            {post.isPending && <Loader2 size={15} className="animate-spin" />}
+            Post to finance
+          </button>
+        </div>
+      )}
+      {s.inconsistencies > 0 && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+          {s.inconsistencies} payment(s) do not match their entry in the books
+          (a voided or changed expense). Check the Expenses screen for the
+          Salaries category.
+        </div>
+      )}
+    </div>
   );
 }

@@ -74,6 +74,14 @@ import TimetablePrintPage from "@/features/timetable/TimetablePrintPage";
 import HomeworkPage from "@/features/homework/HomeworkPage";
 import HomeworkDetailPage from "@/features/homework/HomeworkDetailPage";
 import PortalHomeworkPage from "@/features/homework/PortalHomeworkPage";
+import BooksPage from "@/features/library/BooksPage";
+import LibraryCategoriesPage from "@/features/library/CategoriesPage";
+import InventoryPage from "@/features/library/InventoryPage";
+import IssuePage from "@/features/library/IssuePage";
+import ReturnPage from "@/features/library/ReturnPage";
+import OverduePage from "@/features/library/OverduePage";
+import FinesPage from "@/features/library/FinesPage";
+import LibraryReportsPage from "@/features/library/LibraryReportsPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -144,6 +152,14 @@ const implemented = new Set([
   "/staff/payroll-reports",
   "/academics/timetable",
   "/academics/homework",
+  "/library/books",
+  "/library/categories",
+  "/library/inventory",
+  "/library/issue",
+  "/library/return",
+  "/library/overdue",
+  "/library/fines",
+  "/library/reports",
 ]);
 
 export const router = createBrowserRouter([
@@ -286,6 +302,14 @@ export const router = createBrowserRouter([
           { path: "academics/homework", element: <HomeworkPage /> },
           { path: "academics/homework/:id", element: <HomeworkDetailPage /> },
           { path: "portal/homework", element: <PortalHomeworkPage /> },
+          { path: "library/books", element: <BooksPage /> },
+          { path: "library/categories", element: <LibraryCategoriesPage /> },
+          { path: "library/inventory", element: <InventoryPage /> },
+          { path: "library/issue", element: <IssuePage /> },
+          { path: "library/return", element: <ReturnPage /> },
+          { path: "library/overdue", element: <OverduePage /> },
+          { path: "library/fines", element: <FinesPage /> },
+          { path: "library/reports", element: <LibraryReportsPage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),

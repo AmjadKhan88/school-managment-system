@@ -238,7 +238,7 @@ export async function listCopies(q: CopyListQuery) {
       ],
     }),
   };
-  const [rows, total, groups] = await prisma.$transaction([
+  const [rows, total] = await prisma.$transaction([
     prisma.bookCopy.findMany({
       where,
       orderBy: [{ accessionNo: "asc" }],
@@ -265,12 +265,11 @@ export async function listCopies(q: CopyListQuery) {
       },
     }),
     prisma.bookCopy.count({ where }),
-    prisma.bookCopy.groupBy({
-      by: ["status"],
-      orderBy: { status: "asc" },
-      _count: { _all: true },
-    }),
   ]);
+  const groups = await prisma.bookCopy.groupBy({
+    by: ["status"],
+    _count: { _all: true },
+  });
   const count = (s: string) =>
     groups.find((g) => g.status === s)?._count._all ?? 0;
   return {

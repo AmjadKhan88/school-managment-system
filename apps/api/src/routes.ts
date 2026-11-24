@@ -24,6 +24,8 @@ import { payrollRouter } from "./modules/payroll/payroll.routes";
 import { loansRouter } from "./modules/payroll/loans.routes";
 import { payrollReportsRouter } from "./modules/payroll/payroll.reports";
 import { timetableRouter } from "./modules/timetable/timetable.routes";
+import { homeworkRouter } from "./modules/homework/homework.routes";
+import { homeworkPortalRouter } from "./modules/homework/portal.routes";
 
 export const apiRouter = Router();
 apiRouter.use("/health", healthRouter);
@@ -52,5 +54,7 @@ apiRouter.use("/payroll", authenticate, payrollRouter);
 apiRouter.use("/staff-loans", authenticate, loansRouter);
 apiRouter.use("/payroll-reports", authenticate, payrollReportsRouter);
 apiRouter.use("/timetable", authenticate, timetableRouter);
+apiRouter.use("/homework", authenticate, homeworkRouter);
+apiRouter.use("/homework-portal", authenticate, homeworkPortalRouter);
 // Later phases: register each new module here, e.g.
 // apiRouter.use('/students', authenticate, studentsRouter);

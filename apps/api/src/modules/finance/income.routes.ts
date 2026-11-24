@@ -159,6 +159,15 @@ incomeRouter.post(
     if (!i) throw ApiError.notFound("Income entry not found");
     if (i.status === "VOIDED")
       throw ApiError.conflict("This entry is already voided");
+    // Income created by a library fine payment is changed only from Library Fines, so the two never disagree.
+    const fine = await prisma.libraryFine.findUnique({
+      where: { incomeId: i.id },
+      select: { fineNo: true },
+    });
+    if (fine)
+      throw ApiError.conflict(
+        `This income is the payment of library fine ${fine.fineNo}. Reverse it under Library Fines instead.`,
+      );
     await prisma.otherIncome.update({
       where: { id: i.id },
       data: {

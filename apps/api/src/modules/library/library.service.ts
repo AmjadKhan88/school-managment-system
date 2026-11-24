@@ -265,7 +265,11 @@ export async function listCopies(q: CopyListQuery) {
       },
     }),
     prisma.bookCopy.count({ where }),
-    prisma.bookCopy.groupBy({ by: ["status"], _count: { _all: true } }),
+    prisma.bookCopy.groupBy({
+      by: ["status"],
+      orderBy: { status: "asc" },
+      _count: { _all: true },
+    }),
   ]);
   const count = (s: string) =>
     groups.find((g) => g.status === s)?._count._all ?? 0;

@@ -219,6 +219,25 @@ async function seedGradingScale() {
       create: { name, type, isPercent, sortOrder: i + 1 },
     });
   }
+
+  // 2g. Starter book categories (editable in the app)
+  for (const [i, name] of [
+    "Fiction",
+    "Non-fiction",
+    "Science",
+    "Mathematics",
+    "Textbooks",
+    "Reference",
+    "Urdu literature",
+    "Islamic studies",
+    "Children's books",
+  ].entries()) {
+    await prisma.bookCategory.upsert({
+      where: { name },
+      update: {},
+      create: { name, sortOrder: i + 1 },
+    });
+  }
 }
 
 main()

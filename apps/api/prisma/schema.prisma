@@ -422,6 +422,8 @@ model Student {
   examResults         ExamResult[]
   reportCardRemarks   ReportCardRemark[]
   homeworkSubmissions HomeworkSubmission[]
+  libraryIssues       LibraryIssue[]
+  libraryFines        LibraryFine[]
   admission           Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -1067,6 +1069,7 @@ model OtherIncome {
   createdById  String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  libraryFine  LibraryFine?
 
   @@index([incomeDate])
   @@index([status])
@@ -1464,6 +1467,8 @@ model Employee {
   loans             StaffLoan[]
   timetableEntries  TimetableEntry[]
   homework          Homework[]
+  libraryIssues     LibraryIssue[]
+  libraryFines      LibraryFine[]
 
   @@index([status])
   @@index([isTeacher])
@@ -1943,4 +1948,154 @@ model SubmissionFile {
 
   @@index([submissionId])
   @@map("submission_files")
+}
+
+// ---------------- PHASE 6A: library ----------------
+
+enum CopyStatus {
+  AVAILABLE
+  ISSUED
+  LOST
+  WITHDRAWN
+}
+
+enum BorrowerType {
+  STUDENT
+  EMPLOYEE
+}
+
+enum IssueStatus {
+  ISSUED
+  RETURNED
+  LOST
+}
+
+enum FineReason {
+  OVERDUE
+  LOST
+  DAMAGED
+}
+
+enum FineStatus {
+  UNPAID
+  PAID
+  WAIVED
+}
+
+model BookCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  books Book[]
+
+  @@map("book_categories")
+}
+
+// The title. Physical copies are in BookCopy. Never deleted: deactivate instead.
+model Book {
+  id            String   @id @default(cuid())
+  isbn          String?  @unique
+  title         String
+  author        String
+  publisher     String?
+  edition       String?
+  publishedYear Int?
+  language      String?
+  categoryId    String
+  shelfLocation String?
+  price         Decimal? @db.Decimal(14, 2)
+  description   String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category BookCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  copies   BookCopy[]
+
+  @@index([title])
+  @@index([author])
+  @@index([categoryId])
+  @@map("books")
+}
+
+model BookCopy {
+  id          String     @id @default(cuid())
+  bookId      String
+  accessionNo String     @unique
+  status      CopyStatus @default(AVAILABLE)
+  note        String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  book   Book           @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  issues LibraryIssue[]
+
+  @@index([bookId, status])
+  @@map("book_copies")
+}
+
+model LibraryIssue {
+  id           String       @id @default(cuid())
+  issueNo      String       @unique
+  copyId       String
+  borrowerType BorrowerType
+  studentId    String?
+  employeeId   String?
+  issuedOn     DateTime     @db.Date
+  dueDate      DateTime     @db.Date
+  returnedOn   DateTime?    @db.Date
+  status       IssueStatus  @default(ISSUED)
+  renewals     Int          @default(0)
+  issuedById   String?
+  returnedById String?
+  returnNote   String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  copy     BookCopy      @relation(fields: [copyId], references: [id], onDelete: Restrict)
+  student  Student?      @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  employee Employee?     @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  fines    LibraryFine[]
+
+  @@index([studentId, status])
+  @@index([employeeId, status])
+  @@index([status, dueDate])
+  @@index([copyId])
+  @@map("library_issues")
+}
+
+// Collected fines become Other income, linked here. Never deleted: paid, waived or reversed.
+model LibraryFine {
+  id            String         @id @default(cuid())
+  fineNo        String         @unique
+  issueId       String
+  borrowerType  BorrowerType
+  studentId     String?
+  employeeId    String?
+  reason        FineReason
+  amount        Decimal        @db.Decimal(14, 2)
+  status        FineStatus     @default(UNPAID)
+  note          String?
+  paidOn        DateTime?      @db.Date
+  paymentMethod PaymentMethod?
+  receivedById  String?
+  waivedById    String?
+  waiveReason   String?
+  incomeId      String?        @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  issue    LibraryIssue @relation(fields: [issueId], references: [id], onDelete: Restrict)
+  student  Student?     @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  employee Employee?    @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  income   OtherIncome? @relation(fields: [incomeId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([studentId, status])
+  @@index([employeeId, status])
+  @@map("library_fines")
 }

@@ -87,6 +87,7 @@ export const DEFAULT_ROLES: {
       staff: READ,
       leaves: [...READ, "APPROVE"],
       communication: ALL,
+      homework: READ,
     },
   },
   {
@@ -104,6 +105,7 @@ export const DEFAULT_ROLES: {
       attendance: ALL,
       reports: READ,
       leaves: [...READ, "APPROVE"],
+      homework: ALL,
     },
   },
   {

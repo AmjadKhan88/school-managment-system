@@ -71,6 +71,9 @@ import LoansPage from "@/features/payroll/LoansPage";
 import PayrollReportsPage from "@/features/payroll/PayrollReportsPage";
 import TimetablePage from "@/features/timetable/TimetablePage";
 import TimetablePrintPage from "@/features/timetable/TimetablePrintPage";
+import HomeworkPage from "@/features/homework/HomeworkPage";
+import HomeworkDetailPage from "@/features/homework/HomeworkDetailPage";
+import PortalHomeworkPage from "@/features/homework/PortalHomeworkPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -140,6 +143,7 @@ const implemented = new Set([
   "/staff/loans",
   "/staff/payroll-reports",
   "/academics/timetable",
+  "/academics/homework",
 ]);
 
 export const router = createBrowserRouter([
@@ -279,6 +283,9 @@ export const router = createBrowserRouter([
           },
           { path: "staff/payroll-reports", element: <PayrollReportsPage /> },
           { path: "academics/timetable", element: <TimetablePage /> },
+          { path: "academics/homework", element: <HomeworkPage /> },
+          { path: "academics/homework/:id", element: <HomeworkDetailPage /> },
+          { path: "portal/homework", element: <PortalHomeworkPage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),

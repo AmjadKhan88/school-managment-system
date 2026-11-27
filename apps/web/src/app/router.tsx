@@ -82,6 +82,17 @@ import ReturnPage from "@/features/library/ReturnPage";
 import OverduePage from "@/features/library/OverduePage";
 import FinesPage from "@/features/library/FinesPage";
 import LibraryReportsPage from "@/features/library/LibraryReportsPage";
+import { PortalLayout } from "@/features/portal/PortalLayout";
+import PortalHome from "@/features/portal/PortalHome";
+import PortalAttendance from "@/features/portal/PortalAttendance";
+import PortalFees from "@/features/portal/PortalFees";
+import PortalResults, {
+  PortalReportCard,
+} from "@/features/portal/PortalResults";
+import PortalTimetable from "@/features/portal/PortalTimetable";
+import PortalLeaves from "@/features/portal/PortalLeaves";
+import PortalLibrary from "@/features/portal/PortalLibrary";
+import PortalProfile from "@/features/portal/PortalProfile";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -301,7 +312,6 @@ export const router = createBrowserRouter([
           { path: "academics/timetable", element: <TimetablePage /> },
           { path: "academics/homework", element: <HomeworkPage /> },
           { path: "academics/homework/:id", element: <HomeworkDetailPage /> },
-          { path: "portal/homework", element: <PortalHomeworkPage /> },
           { path: "library/books", element: <BooksPage /> },
           { path: "library/categories", element: <LibraryCategoriesPage /> },
           { path: "library/inventory", element: <InventoryPage /> },
@@ -318,6 +328,24 @@ export const router = createBrowserRouter([
         ],
       },
       { path: "print/report-cards", element: <ReportCardPrintPage /> },
+      {
+        path: "portal",
+        element: <PortalLayout />,
+        children: [
+          { index: true, element: <PortalHome /> },
+          { path: "attendance", element: <PortalAttendance /> },
+          { path: "fees", element: <PortalFees /> },
+          { path: "results", element: <PortalResults /> },
+          { path: "report-card/:examId", element: <PortalReportCard /> },
+          { path: "timetable", element: <PortalTimetable /> },
+          { path: "homework", element: <PortalHomeworkPage /> },
+          { path: "leaves", element: <PortalLeaves /> },
+          { path: "library", element: <PortalLibrary /> },
+          { path: "profile", element: <PortalProfile /> },
+          { path: "password", element: <PasswordPage /> },
+          { path: "*", element: <Navigate to="/portal" replace /> },
+        ],
+      },
       { path: "print/salary-slips", element: <SalarySlipPrintPage /> },
       { path: "print/timetable", element: <TimetablePrintPage /> },
     ],

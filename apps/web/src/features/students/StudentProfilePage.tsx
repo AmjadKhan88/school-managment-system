@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { api, apiMessage } from "@/lib/api";
 import { useAuth } from "@/store/auth";
+import { PortalLogins } from "./PortalLogins";
 import {
   Avatar,
   calcAge,
@@ -143,7 +144,7 @@ const Block = ({
   </section>
 );
 
-type Tab = "overview" | "guardians" | "history";
+type Tab = "overview" | "guardians" | "history" | "logins";
 const cap = (s: string) => s.charAt(0) + s.slice(1).toLowerCase();
 
 export default function StudentProfilePage() {
@@ -320,6 +321,7 @@ export default function StudentProfilePage() {
             ["overview", "Overview"],
             ["guardians", "Guardians"],
             ["history", "Academic history"],
+            ...(can("users", "VIEW") ? [["logins", "Portal logins"]] : []),
           ] as [Tab, string][]
         ).map(([k, label]) => (
           <button
@@ -404,6 +406,8 @@ export default function StudentProfilePage() {
             ))}
           </div>
         )}
+
+        {tab === "logins" && <PortalLogins studentId={p.id} />}
 
         {tab === "history" && (
           <div className="card overflow-x-auto">

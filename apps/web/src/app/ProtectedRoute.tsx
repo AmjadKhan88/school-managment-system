@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { isPortalUser } from "@/features/portal/shared";
 import { useAuth } from "@/store/auth";
 
 export function ProtectedRoute() {
@@ -12,7 +13,11 @@ export function ProtectedRoute() {
     );
   if (!user)
     return <Navigate to="/login" replace state={{ from: loc.pathname }} />;
-  if (user.mustChangePassword && loc.pathname !== "/account/password")
-    return <Navigate to="/account/password" replace />;
+  // Students and parents change their password inside the portal, staff inside the main app.
+  const passwordPath = isPortalUser(user)
+    ? "/portal/password"
+    : "/account/password";
+  if (user.mustChangePassword && loc.pathname !== passwordPath)
+    return <Navigate to={passwordPath} replace />;
   return <Outlet />;
 }

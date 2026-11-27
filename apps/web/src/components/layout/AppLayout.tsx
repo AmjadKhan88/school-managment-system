@@ -1,10 +1,15 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
+import { isPortalUser } from '@/features/portal/shared';
+import { useAuth } from '@/store/auth';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 
 export function AppLayout() {
   const [open, setOpen] = useState(false);
+  const user = useAuth((s) => s.user);
+  // Students and parents never see the staff application.
+  if (isPortalUser(user)) return <Navigate to="/portal" replace />;
   return (
     <div className="min-h-screen">
       <Sidebar open={open} onClose={() => setOpen(false)} />

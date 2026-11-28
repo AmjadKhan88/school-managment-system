@@ -34,6 +34,7 @@ import {
   noticesRouter,
 } from "./modules/communication/communication.routes";
 import { webhookRouter } from "./modules/communication/webhook.routes";
+import { transportRouter } from "./modules/transport/transport.routes";
 
 export const apiRouter = Router();
 apiRouter.use("/health", healthRouter);
@@ -70,5 +71,6 @@ apiRouter.use("/portal-accounts", authenticate, portalAccountsRouter);
 apiRouter.use("/communication", authenticate, communicationRouter);
 apiRouter.use("/notices", authenticate, noticesRouter);
 apiRouter.use("/webhooks", webhookRouter);
+apiRouter.use("/transport", authenticate, transportRouter);
 // Later phases: register each new module here, e.g.
 // apiRouter.use('/students', authenticate, studentsRouter);

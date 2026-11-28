@@ -27,6 +27,7 @@ import {
   resultsFor,
   timetableFor,
 } from "./portal.service";
+import { transportFor } from "../transport/transport.service";
 
 /**
  * Student and parent portal. Mounted at /portal behind `authenticate`.
@@ -174,4 +175,12 @@ portalRouter.post(
     });
     ok(res, r);
   }),
+);
+
+portalRouter.get(
+  "/transport",
+  validate(childQuerySchema, "query"),
+  h(async (req, res) =>
+    ok(res, await transportFor((await assertChild(req.user!.id, sid(req))).id)),
+  ),
 );

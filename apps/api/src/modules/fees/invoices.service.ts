@@ -14,6 +14,7 @@ import {
 } from "./invoices.calc";
 import { effectiveItems, structureInclude } from "./fees.helpers";
 import type { GenerateInput } from "./invoices.schema";
+import { loadTransportBilling } from "../transport/transport.billing";
 
 interface Draft {
   enrollmentId: string;
@@ -142,6 +143,9 @@ export async function generateInvoices(input: GenerateInput, userId: string) {
             }),
           ]);
 
+        // Transport Fee line from each student's transport assignment (see the transport module)
+        const transport = await loadTransportBilling(tx, studentIds, periodKey);
+
         const structureByClass = new Map(
           classStructures.map((s) => [s.classId, s]),
         );
@@ -235,6 +239,18 @@ export async function generateInvoices(input: GenerateInput, userId: string) {
               discount: ZERO,
             });
           }
+          // A class fee structure that already has a Transport Fee line wins: never charge it twice.
+          const tr = transport.get(e.studentId);
+          if (tr && !lines.some((l) => l.categoryId === tr.categoryId)) {
+            lines.push({
+              categoryId: tr.categoryId,
+              description: tr.description,
+              frequency: "MONTHLY",
+              amount: tr.amount,
+              discount: ZERO,
+            });
+          }
+
           if (lines.length === 0) {
             skip("Nothing to charge this month");
             continue;

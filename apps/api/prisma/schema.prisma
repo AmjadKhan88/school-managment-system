@@ -258,6 +258,7 @@ model Class {
   teacherAssignments      TeacherAssignment[]
   timetableEntries        TimetableEntry[]
   homework                Homework[]
+  noticeClasses           NoticeClass[]
 
   @@map("classes")
 }
@@ -2098,4 +2099,77 @@ model LibraryFine {
   @@index([studentId, status])
   @@index([employeeId, status])
   @@map("library_fines")
+}
+
+// ---------------- PHASE 6B: notices ----------------
+
+enum NoticeKind {
+  NOTICE
+  CIRCULAR
+  ANNOUNCEMENT
+}
+
+enum NoticeAudience {
+  ALL
+  PARENTS
+  STUDENTS
+  STAFF
+  CLASS
+}
+
+enum NoticeStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// Notices, circulars and announcements. Archived, never deleted (only drafts can be removed).
+model Notice {
+  id            String         @id @default(cuid())
+  noticeNo      String         @unique
+  kind          NoticeKind
+  title         String
+  body          String
+  audience      NoticeAudience @default(ALL)
+  status        NoticeStatus   @default(DRAFT)
+  isPinned      Boolean        @default(false)
+  publishedAt   DateTime?
+  expiresOn     DateTime?      @db.Date
+  archivedAt    DateTime?
+  archiveReason String?
+  createdById   String?
+  publishedById String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  classes NoticeClass[]
+  reads   NoticeRead[]
+
+  @@index([status, publishedAt])
+  @@index([kind, status])
+  @@map("notices")
+}
+
+// Only used when audience is CLASS.
+model NoticeClass {
+  noticeId String
+  classId  String
+
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  @@id([noticeId, classId])
+  @@map("notice_classes")
+}
+
+model NoticeRead {
+  noticeId String
+  userId   String
+  readAt   DateTime @default(now())
+
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+
+  @@id([noticeId, userId])
+  @@index([userId])
+  @@map("notice_reads")
 }

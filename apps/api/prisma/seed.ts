@@ -238,6 +238,33 @@ async function seedGradingScale() {
       create: { name, sortOrder: i + 1 },
     });
   }
+
+  // 2h. Starter message templates (editable in the app)
+  const templates: [string, string][] = [
+    [
+      "Fee reminder",
+      "Dear {parent_name},\n\nThis is a reminder that {student_name} has outstanding school fees of {amount} for {fee_month}.\n\nPlease contact the school office for assistance.\n\nThank you.",
+    ],
+    [
+      "Absence notice",
+      "Dear {parent_name},\n\n{student_name} was absent from school today. Please contact the school office if this is unexpected.\n\nThank you.",
+    ],
+    [
+      "General notice",
+      "Dear {parent_name},\n\n{school_name} would like to inform you about the following:\n\n[write your message here]\n\nThank you.",
+    ],
+    [
+      "Staff notice",
+      "Dear {staff_name},\n\n[write your message here]\n\n{school_name}",
+    ],
+  ];
+  for (const [name, body] of templates) {
+    await prisma.messageTemplate.upsert({
+      where: { name },
+      update: {},
+      create: { name, body },
+    });
+  }
 }
 
 main()

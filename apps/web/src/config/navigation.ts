@@ -46,6 +46,13 @@ export const NAVIGATION: NavSection[] = [
         module: "dashboard",
         phase: 1,
       },
+      {
+        label: "Notice Board",
+        path: "/notice-board",
+        icon: "Bell",
+        module: "dashboard",
+        phase: 6,
+      },
     ],
   },
 

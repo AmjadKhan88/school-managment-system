@@ -93,6 +93,9 @@ import PortalTimetable from "@/features/portal/PortalTimetable";
 import PortalLeaves from "@/features/portal/PortalLeaves";
 import PortalLibrary from "@/features/portal/PortalLibrary";
 import PortalProfile from "@/features/portal/PortalProfile";
+import NoticeBoardPage from "@/features/communication/NoticeBoardPage";
+import StaffNoticesPage from "@/features/communication/StaffNoticesPage";
+import PortalNotices from "@/features/portal/PortalNotices";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -171,6 +174,10 @@ const implemented = new Set([
   "/library/overdue",
   "/library/fines",
   "/library/reports",
+  "/communication/notices",
+  "/communication/circulars",
+  "/communication/announcements",
+  "/notice-board",
 ]);
 
 export const router = createBrowserRouter([
@@ -320,6 +327,19 @@ export const router = createBrowserRouter([
           { path: "library/overdue", element: <OverduePage /> },
           { path: "library/fines", element: <FinesPage /> },
           { path: "library/reports", element: <LibraryReportsPage /> },
+          { path: "notice-board", element: <StaffNoticesPage /> },
+          {
+            path: "communication/notices",
+            element: <NoticeBoardPage kind="NOTICE" />,
+          },
+          {
+            path: "communication/circulars",
+            element: <NoticeBoardPage kind="CIRCULAR" />,
+          },
+          {
+            path: "communication/announcements",
+            element: <NoticeBoardPage kind="ANNOUNCEMENT" />,
+          },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),
@@ -342,6 +362,7 @@ export const router = createBrowserRouter([
           { path: "leaves", element: <PortalLeaves /> },
           { path: "library", element: <PortalLibrary /> },
           { path: "profile", element: <PortalProfile /> },
+          { path: "notices", element: <PortalNotices /> },
           { path: "password", element: <PasswordPage /> },
           { path: "*", element: <Navigate to="/portal" replace /> },
         ],

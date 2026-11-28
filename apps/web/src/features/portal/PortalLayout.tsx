@@ -1,4 +1,5 @@
 import {
+  Bell,
   BookOpen,
   CalendarCheck,
   CalendarClock,
@@ -17,6 +18,7 @@ import { useLogout } from "@/hooks/useLogout";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/store/auth";
 import { useChildren, usePortalStore } from "./shared";
+import { useUnreadNotices } from "@/features/communication/shared";
 
 const NAV = [
   { to: "/portal", label: "Home", icon: Home, end: true },
@@ -28,15 +30,18 @@ const NAV = [
   { to: "/portal/leaves", label: "Leave", icon: CalendarOff },
   { to: "/portal/library", label: "Library", icon: BookOpen },
   { to: "/portal/profile", label: "Profile", icon: UserRound },
+  { to: "/portal/notices", label: "Notices", icon: Bell },
 ];
 
 export function PortalLayout() {
   const user = useAuth((s) => s.user);
   const logout = useLogout();
   const kids = useChildren();
+  const unread = useUnreadNotices();
   const { studentId, setStudentId } = usePortalStore();
   if (!user) return <Navigate to="/login" replace />;
-  const selected = kids.data?.find((k) => k.id === studentId)?.id ?? kids.data?.[0]?.id ?? "";
+  const selected =
+    kids.data?.find((k) => k.id === studentId)?.id ?? kids.data?.[0]?.id ?? "";
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -51,7 +56,9 @@ export function PortalLayout() {
                 {user.school.name}
               </p>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-600">
-                {user.roles[0]?.slug === "student" ? "Student portal" : "Parent portal"}
+                {user.roles[0]?.slug === "student"
+                  ? "Student portal"
+                  : "Parent portal"}
               </p>
             </div>
           </div>
@@ -108,6 +115,11 @@ export function PortalLayout() {
             >
               <Icon size={16} />
               {label}
+              {to === "/portal/notices" && (unread.data ?? 0) > 0 && (
+                <span className="rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">
+                  {unread.data}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

@@ -96,6 +96,9 @@ import PortalProfile from "@/features/portal/PortalProfile";
 import NoticeBoardPage from "@/features/communication/NoticeBoardPage";
 import StaffNoticesPage from "@/features/communication/StaffNoticesPage";
 import PortalNotices from "@/features/portal/PortalNotices";
+import ComposePage from "@/features/communication/ComposePage";
+import HistoryPage from "@/features/communication/HistoryPage";
+import TemplatesPage from "@/features/communication/TemplatesPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -178,6 +181,13 @@ const implemented = new Set([
   "/communication/circulars",
   "/communication/announcements",
   "/notice-board",
+  "/communication/sms",
+  "/communication/whatsapp",
+  "/communication/email",
+  "/communication/parents",
+  "/communication/history",
+  "/communication/templates",
+  "/fees/reminders",
 ]);
 
 export const router = createBrowserRouter([
@@ -339,6 +349,60 @@ export const router = createBrowserRouter([
           {
             path: "communication/announcements",
             element: <NoticeBoardPage kind="ANNOUNCEMENT" />,
+          },
+          {
+            path: "communication/whatsapp",
+            element: (
+              <ComposePage
+                title="WhatsApp Notifications"
+                subtitle="Send WhatsApp messages to parents or staff."
+                channel="WHATSAPP"
+              />
+            ),
+          },
+          {
+            path: "communication/sms",
+            element: (
+              <ComposePage
+                title="SMS Notifications"
+                subtitle="Send text messages to parents or staff."
+                channel="SMS"
+              />
+            ),
+          },
+          {
+            path: "communication/email",
+            element: (
+              <ComposePage
+                title="Email Notifications"
+                subtitle="Send emails to parents or staff."
+                channel="EMAIL"
+              />
+            ),
+          },
+          {
+            path: "communication/parents",
+            element: (
+              <ComposePage
+                title="Parent Communication"
+                subtitle="Message the parents of the whole school or of one class."
+                audience="PARENTS_CLASS"
+              />
+            ),
+          },
+          { path: "communication/history", element: <HistoryPage /> },
+          { path: "communication/templates", element: <TemplatesPage /> },
+          {
+            path: "fees/reminders",
+            element: (
+              <ComposePage
+                title="WhatsApp Fee Reminders"
+                subtitle="Remind the parents of students with overdue fees."
+                channel="WHATSAPP"
+                audience="DEFAULTERS"
+                lockAudience
+              />
+            ),
           },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(

@@ -162,6 +162,7 @@ export const NAVIGATION: NavSection[] = [
       ["Email Notifications", "email", "Mail"],
       ["Parent Communication", "parents", "Users"],
       ["Notification History", "history", "History"],
+      ["Message Templates", "templates", "FileText"],
     ],
   ),
 

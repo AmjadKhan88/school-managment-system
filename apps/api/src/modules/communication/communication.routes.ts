@@ -26,9 +26,12 @@ import {
   unreadCount,
   updateNotice,
 } from "./notices.service";
+import { messagesRouter } from "./messages.routes";
 
 // =========================== Staff: manage notices (/communication) ===========================
 export const communicationRouter = Router();
+
+communicationRouter.use("/messages", messagesRouter);
 
 communicationRouter.get(
   "/classes",

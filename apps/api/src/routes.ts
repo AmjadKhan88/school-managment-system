@@ -29,6 +29,10 @@ import { homeworkPortalRouter } from "./modules/homework/portal.routes";
 import { libraryRouter } from "./modules/library/library.routes";
 import { portalRouter } from "./modules/portal/portal.routes";
 import { portalAccountsRouter } from "./modules/portal/portal.accounts.routes";
+import {
+  communicationRouter,
+  noticesRouter,
+} from "./modules/communication/communication.routes";
 
 export const apiRouter = Router();
 apiRouter.use("/health", healthRouter);
@@ -62,5 +66,7 @@ apiRouter.use("/homework-portal", authenticate, homeworkPortalRouter);
 apiRouter.use("/library", authenticate, libraryRouter);
 apiRouter.use("/portal", authenticate, portalRouter);
 apiRouter.use("/portal-accounts", authenticate, portalAccountsRouter);
+apiRouter.use("/communication", authenticate, communicationRouter);
+apiRouter.use("/notices", authenticate, noticesRouter);
 // Later phases: register each new module here, e.g.
 // apiRouter.use('/students', authenticate, studentsRouter);

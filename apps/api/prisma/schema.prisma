@@ -407,26 +407,28 @@ model Student {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  user                User?                @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
-  guardians           StudentGuardian[]
-  documents           StudentDocument[]
-  enrollments         Enrollment[]
-  promotions          StudentPromotion[]
-  transfers           StudentTransfer[]
-  feeInvoices         FeeInvoice[]
-  feePayments         FeePayment[]
-  feeReminders        FeeReminder[]
-  feeRefunds          FeeRefund[]
-  attendance          StudentAttendance[]
-  leaveApplications   LeaveApplication[]
-  examMarks           ExamMark[]
-  examResults         ExamResult[]
-  reportCardRemarks   ReportCardRemark[]
-  homeworkSubmissions HomeworkSubmission[]
-  libraryIssues       LibraryIssue[]
-  libraryFines        LibraryFine[]
-  messageLogs         MessageLog[]
-  admission           Admission?
+  user                 User?                 @relation("StudentLogin", fields: [userId], references: [id], onDelete: SetNull)
+  guardians            StudentGuardian[]
+  documents            StudentDocument[]
+  enrollments          Enrollment[]
+  promotions           StudentPromotion[]
+  transfers            StudentTransfer[]
+  feeInvoices          FeeInvoice[]
+  feePayments          FeePayment[]
+  feeReminders         FeeReminder[]
+  feeRefunds           FeeRefund[]
+  attendance           StudentAttendance[]
+  leaveApplications    LeaveApplication[]
+  examMarks            ExamMark[]
+  examResults          ExamResult[]
+  reportCardRemarks    ReportCardRemark[]
+  homeworkSubmissions  HomeworkSubmission[]
+  libraryIssues        LibraryIssue[]
+  libraryFines         LibraryFine[]
+  messageLogs          MessageLog[]
+  transportAssignments TransportAssignment[]
+  transportAttendance  TransportAttendance[]
+  admission            Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
   @@index([status])
@@ -2263,4 +2265,172 @@ model MessageLog {
   @@index([status])
   @@index([studentId, createdAt])
   @@map("message_logs")
+}
+
+// ---------------- PHASE 6D: transport ----------------
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  RETIRED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  ENDED
+}
+
+enum TripType {
+  MORNING
+  AFTERNOON
+}
+
+enum BoardingStatus {
+  BOARDED
+  ABSENT
+}
+
+// Never deleted: retire instead.
+model Vehicle {
+  id                 String        @id @default(cuid())
+  vehicleNo          String        @unique
+  make               String?
+  model              String?
+  year               Int?
+  capacity           Int
+  status             VehicleStatus @default(ACTIVE)
+  registrationExpiry DateTime?     @db.Date
+  insuranceExpiry    DateTime?     @db.Date
+  notes              String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  routes      TransportRoute[]
+  maintenance VehicleMaintenance[]
+
+  @@map("vehicles")
+}
+
+model VehicleMaintenance {
+  id          String    @id @default(cuid())
+  vehicleId   String
+  serviceDate DateTime  @db.Date
+  description String
+  cost        Decimal?  @db.Decimal(14, 2)
+  workshop    String?
+  nextDueDate DateTime? @db.Date
+  odometer    Int?
+  createdById String?
+  createdAt   DateTime  @default(now())
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId, serviceDate])
+  @@map("vehicle_maintenance")
+}
+
+// Never deleted: deactivate instead.
+model Driver {
+  id            String    @id @default(cuid())
+  fullName      String
+  phone         String
+  cnic          String?   @unique
+  licenseNo     String?   @unique
+  licenseExpiry DateTime? @db.Date
+  address       String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  routes TransportRoute[]
+
+  @@map("drivers")
+}
+
+model TransportRoute {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  vehicleId     String?
+  driverId      String?
+  morningTime   String? // "07:15"
+  afternoonTime String?
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  vehicle     Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver      Driver?               @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  stops       RouteStop[]
+  assignments TransportAssignment[]
+  attendance  TransportAttendance[]
+
+  @@map("transport_routes")
+}
+
+// monthlyFee is the default fee for a student at this stop. Each assignment keeps its own copy.
+model RouteStop {
+  id         String   @id @default(cuid())
+  routeId    String
+  name       String
+  sortOrder  Int
+  pickupTime String?
+  monthlyFee Decimal  @default(0) @db.Decimal(14, 2)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  route       TransportRoute        @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  assignments TransportAssignment[]
+
+  @@unique([routeId, name])
+  @@index([routeId, sortOrder])
+  @@map("route_stops")
+}
+
+// A student's stay on a route. Ended, never deleted. activeLock holds the student id while ACTIVE (one at a time).
+// monthlyFee is billed on the monthly invoice as the Transport Fee line.
+model TransportAssignment {
+  id          String           @id @default(cuid())
+  studentId   String
+  routeId     String
+  stopId      String
+  monthlyFee  Decimal          @db.Decimal(14, 2)
+  feeNote     String?
+  startDate   DateTime         @db.Date
+  endDate     DateTime?        @db.Date
+  status      AssignmentStatus @default(ACTIVE)
+  activeLock  String?          @unique
+  endReason   String?
+  createdById String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  route   TransportRoute @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  stop    RouteStop      @relation(fields: [stopId], references: [id], onDelete: Restrict)
+
+  @@index([routeId, status])
+  @@index([studentId, status])
+  @@index([startDate, endDate])
+  @@map("transport_assignments")
+}
+
+model TransportAttendance {
+  id         String         @id @default(cuid())
+  routeId    String
+  date       DateTime       @db.Date
+  trip       TripType
+  studentId  String
+  status     BoardingStatus
+  markedById String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  route   TransportRoute @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  student Student        @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([date, trip, studentId])
+  @@index([routeId, date])
+  @@map("transport_attendance")
 }

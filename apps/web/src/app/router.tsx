@@ -99,6 +99,14 @@ import PortalNotices from "@/features/portal/PortalNotices";
 import ComposePage from "@/features/communication/ComposePage";
 import HistoryPage from "@/features/communication/HistoryPage";
 import TemplatesPage from "@/features/communication/TemplatesPage";
+import VehiclesPage from "@/features/transport/VehiclesPage";
+import DriversPage from "@/features/transport/DriversPage";
+import RoutesPage from "@/features/transport/RoutesPage";
+import StopsPage from "@/features/transport/StopsPage";
+import TransportFeesPage from "@/features/transport/TransportFeesPage";
+import TransportAssignmentsPage from "@/features/transport/AssignmentsPage";
+import TransportAttendancePage from "@/features/transport/TransportAttendancePage";
+import TransportReportsPage from "@/features/transport/TransportReportsPage";
 
 // Routes already implemented; every other nav item falls back to ModulePage.
 const implemented = new Set([
@@ -188,6 +196,14 @@ const implemented = new Set([
   "/communication/history",
   "/communication/templates",
   "/fees/reminders",
+  "/transport/vehicles",
+  "/transport/drivers",
+  "/transport/routes",
+  "/transport/stops",
+  "/transport/assignments",
+  "/transport/fees",
+  "/transport/attendance",
+  "/transport/reports",
 ]);
 
 export const router = createBrowserRouter([
@@ -404,6 +420,20 @@ export const router = createBrowserRouter([
               />
             ),
           },
+          { path: "transport/vehicles", element: <VehiclesPage /> },
+          { path: "transport/drivers", element: <DriversPage /> },
+          { path: "transport/routes", element: <RoutesPage /> },
+          { path: "transport/stops", element: <StopsPage /> },
+          {
+            path: "transport/assignments",
+            element: <TransportAssignmentsPage />,
+          },
+          { path: "transport/fees", element: <TransportFeesPage /> },
+          {
+            path: "transport/attendance",
+            element: <TransportAttendancePage />,
+          },
+          { path: "transport/reports", element: <TransportReportsPage /> },
           { path: "reports/day-wise-collection", element: <DayWisePage /> },
           ...ALL_NAV_ITEMS.filter(
             (i) => !i.action && !implemented.has(i.path),

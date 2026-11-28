@@ -331,19 +331,22 @@ function PlaceDialog({
   const chosen = stops.data?.find((s) => s.id === stopId);
 
   const save = useMutation({
-    mutationFn: () => {
+    mutationFn: async (): Promise<unknown> => {
       const body = {
         stopId,
         monthlyFee: fee || undefined,
         feeNote: note || undefined,
         startDate: start,
       };
-      return current
-        ? api.post(`/transport/assignments/${current.id}/move`, body)
-        : api.post("/transport/assignments", {
-            studentId: student!.id,
-            ...body,
-          });
+
+      if (current) {
+        return api.post(`/transport/assignments/${current.id}/move`, body);
+      }
+
+      return api.post("/transport/assignments", {
+        studentId: student!.id,
+        ...body,
+      });
     },
     onSuccess: () => {
       toast.success(current ? "Moved" : "Assigned");

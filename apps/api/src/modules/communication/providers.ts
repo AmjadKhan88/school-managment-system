@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 import { env } from "../../config/env";
 import type { Channel } from "./messages.schema";
 
@@ -128,7 +128,7 @@ async function sendSms(i: SendInput): Promise<SendResult> {
   }
 }
 
-let mailer: nodemailer.Transporter | null = null;
+let mailer: Transporter | null = null;
 const transporter = () =>
   (mailer ??= nodemailer.createTransport({
     host: env.SMTP_HOST,

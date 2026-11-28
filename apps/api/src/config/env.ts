@@ -19,6 +19,19 @@ const schema = z.object({
   SEED_SCHOOL_NAME: z.string().default("My School"),
   SEED_ADMIN_EMAIL: z.string().email().default("admin@school.com"),
   SEED_ADMIN_PASSWORD: z.string().min(8).default("Admin.890"),
+  // Messaging (all optional: a channel without credentials is simply "not configured")
+  WHATSAPP_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_VERIFY_TOKEN: z.string().optional(),
+  WHATSAPP_APP_SECRET: z.string().optional(),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);

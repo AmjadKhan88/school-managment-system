@@ -425,6 +425,7 @@ model Student {
   homeworkSubmissions HomeworkSubmission[]
   libraryIssues       LibraryIssue[]
   libraryFines        LibraryFine[]
+  messageLogs         MessageLog[]
   admission           Admission?
 
   @@index([fullName, dateOfBirth]) // duplicate detection
@@ -1470,6 +1471,7 @@ model Employee {
   homework          Homework[]
   libraryIssues     LibraryIssue[]
   libraryFines      LibraryFine[]
+  messageLogs       MessageLog[]
 
   @@index([status])
   @@index([isTeacher])
@@ -2172,4 +2174,93 @@ model NoticeRead {
   @@id([noticeId, userId])
   @@index([userId])
   @@map("notice_reads")
+}
+
+// ---------------- PHASE 6C: messaging ----------------
+
+enum MessageChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  MANUAL
+}
+
+model MessageTemplate {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  subject        String?
+  body           String
+  waTemplateName String? // the approved WhatsApp Business template this maps to, if any
+  waLanguage     String   @default("en")
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  batches MessageBatch[]
+
+  @@map("message_templates")
+}
+
+// One send action: who it went to, through which channel, with which text.
+model MessageBatch {
+  id             String         @id @default(cuid())
+  batchNo        String         @unique
+  channel        MessageChannel
+  purpose        String // GENERAL or FEE_REMINDER
+  audienceLabel  String
+  templateId     String?
+  subject        String?
+  body           String
+  waTemplateName String?
+  waLanguage     String?
+  total          Int
+  skipped        Int            @default(0)
+  createdById    String?
+  createdAt      DateTime       @default(now())
+
+  template MessageTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  logs     MessageLog[]
+
+  @@index([createdAt])
+  @@map("message_batches")
+}
+
+// One message to one recipient. Never deleted: it is the delivery history.
+model MessageLog {
+  id                String         @id @default(cuid())
+  batchId           String
+  channel           MessageChannel
+  studentId         String?
+  employeeId        String?
+  recipientName     String
+  to                String
+  subject           String?
+  body              String
+  waParams          String[]
+  status            MessageStatus  @default(QUEUED)
+  provider          String?
+  providerMessageId String?        @unique
+  error             String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  batch    MessageBatch @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  student  Student?     @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  employee Employee?    @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([batchId, status])
+  @@index([status])
+  @@index([studentId, createdAt])
+  @@map("message_logs")
 }
